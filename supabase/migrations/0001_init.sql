@@ -1,7 +1,6 @@
 -- 0001_init.sql — Initial Schema
 
--- Extensions
-create extension if not exists "uuid-ossp";
+-- Extensions (pgcrypto for bcrypt, uuid built-in via gen_random_uuid())
 create extension if not exists "pgcrypto";
 
 -- Custom types
@@ -27,7 +26,7 @@ create index profiles_role_idx on public.profiles(role);
 
 -- 2. PROJECTS
 create table public.projects (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references public.profiles(id) on delete restrict,
   title text not null,
   description text,
@@ -47,7 +46,7 @@ create index projects_type_idx on public.projects(type) where deleted_at is null
 
 -- 3. PANORAMAS
 create table public.panoramas (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
   title text not null,
   position int not null default 0,
@@ -72,7 +71,7 @@ create unique index panoramas_project_position_idx on public.panoramas(project_i
 
 -- 4. HOTSPOTS
 create table public.hotspots (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   panorama_id uuid not null references public.panoramas(id) on delete cascade,
   type hotspot_type not null,
   yaw double precision not null,
@@ -96,7 +95,7 @@ alter table public.hotspots add constraint hotspots_link_has_target
 
 -- 5. SHARES
 create table public.shares (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
   token text not null unique,
   password_hash text,
