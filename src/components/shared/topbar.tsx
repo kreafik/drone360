@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
 
 interface TopbarProps {
   email: string;
@@ -32,13 +31,10 @@ function getInitials(name: string | null, email: string) {
 }
 
 export function Topbar({ email, fullName, onMenuClick }: TopbarProps) {
-  const router = useRouter();
-
   async function handleLogout() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    window.location.href = "/login";
   }
 
   const initials = getInitials(fullName, email);
