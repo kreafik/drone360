@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { MapPin, Clock, ImageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -44,13 +45,14 @@ export function ProjectCard({
       className="group flex flex-col rounded-xl border border-border bg-surface overflow-hidden hover:border-border-strong transition-colors"
     >
       {/* Kapak görseli */}
-      <div className="aspect-video bg-surface-elevated flex items-center justify-center overflow-hidden">
+      <div className="aspect-video bg-surface-elevated relative flex items-center justify-center overflow-hidden">
         {coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={coverUrl}
             alt={title}
-            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover group-hover:scale-[1.02] transition-transform duration-300"
           />
         ) : (
           <div className="flex flex-col items-center gap-2 text-subtle">

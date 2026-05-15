@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Image from "next/image";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Pencil, Trash2, Check, X, ImageIcon } from "lucide-react";
@@ -99,11 +100,13 @@ export function PanoramaCard({
         {/* Thumbnail */}
         <div className="aspect-video bg-surface-elevated relative">
           {thumbnailUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={thumbnailUrl}
               alt={title}
-              className="w-full h-full object-cover"
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              className="object-cover"
+              unoptimized
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
