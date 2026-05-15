@@ -84,7 +84,6 @@ function buildNodes(panoramas: ViewerPanorama[]) {
           id: h.id,
           position: { yaw: h.yaw, pitch: h.pitch },
           html: `<div class="d360-info-marker" aria-label="${h.title ?? "Bilgi"}">i</div>`,
-          tooltip: h.title ? { content: h.description ? `<strong>${h.title}</strong><br>${h.description}` : h.title, trigger: "hover" as const } : undefined,
           size: { width: 40, height: 40 },
           anchor: "center center" as const,
           data: h,
@@ -114,6 +113,7 @@ export function PanoramaViewer({
   const [activeId, setActiveId] = useState<string>(
     panoramas.find((p) => p.id === initialId)?.id ?? panoramas[0]?.id ?? ""
   );
+  const [infoCard, setInfoCard] = useState<{ title: string; description?: string | null } | null>(null);
 
   // Keep callbacks ref in sync without re-running the init effect
   useEffect(() => {
@@ -170,6 +170,7 @@ export function PanoramaViewer({
       vt.addEventListener("node-changed" as never, (e: any) => {
         initializedRef.current = true;
         setActiveId(e.node.id);
+        setInfoCard(null);
         callbacksRef.current.onPanoramaChange?.(e.node.id);
       });
 
@@ -194,6 +195,8 @@ export function PanoramaViewer({
           if (hotspot.type === "pin" && hotspot.targetPanoramaId) {
             (vtRef.current as unknown as { setCurrentNode?: (id: string) => void } | null)
               ?.setCurrentNode?.(hotspot.targetPanoramaId);
+          } else if (hotspot.type === "info") {
+            setInfoCard({ title: hotspot.title ?? "", description: hotspot.description });
           }
           callbacksRef.current.onMarkerClick?.(hotspot);
         }
@@ -248,6 +251,35 @@ export function PanoramaViewer({
 
   return (
     <div ref={containerRef} className={className ?? "w-full h-full"}>
+      {/* Info card — shown when an info marker is tapped/clicked */}
+      {infoCard && (
+        <div
+          className="absolute inset-0 z-[200] flex items-center justify-center p-6 pointer-events-none"
+        >
+          <div className="pointer-events-auto w-full max-w-sm rounded-2xl bg-black/85 backdrop-blur-md border border-white/10 p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3 mb-1">
+              {infoCard.title && (
+                <h3 className="text-white font-semibold text-base leading-snug">
+                  {infoCard.title}
+                </h3>
+              )}
+              <button
+                type="button"
+                onClick={() => setInfoCard(null)}
+                className="shrink-0 size-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            {infoCard.description && (
+              <p className="text-white/75 text-sm leading-relaxed mt-2">
+                {infoCard.description}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {showNav && (
         <div
           className="absolute left-0 right-0 z-[100] pointer-events-none"
