@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import NextTopLoader from "nextjs-toploader";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -43,6 +44,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} dark h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <NextTopLoader
+          color="oklch(0.78 0.16 70)"
+          height={2}
+          showSpinner={false}
+          shadow={false}
+        />
         <TooltipProvider>
           {children}
           <Toaster />
