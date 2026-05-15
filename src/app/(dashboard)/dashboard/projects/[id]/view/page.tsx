@@ -98,6 +98,7 @@ export default async function ProjectViewPage({
           panoramas={panoramas}
           className="absolute inset-0"
           showNavbar
+          showThumbnailNav
         />
       )}
     </div>

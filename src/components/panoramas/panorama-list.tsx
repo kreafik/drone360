@@ -32,10 +32,12 @@ export interface PanoramaItem {
 interface PanoramaListProps {
   projectId: string;
   initialPanoramas: PanoramaItem[];
+  initialCoverPanoramaId?: string | null;
 }
 
-export function PanoramaList({ projectId, initialPanoramas }: PanoramaListProps) {
+export function PanoramaList({ projectId, initialPanoramas, initialCoverPanoramaId }: PanoramaListProps) {
   const [panoramas, setPanoramas] = useState(initialPanoramas);
+  const [coverPanoramaId, setCoverPanoramaId] = useState<string | null>(initialCoverPanoramaId ?? null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -69,6 +71,21 @@ export function PanoramaList({ projectId, initialPanoramas }: PanoramaListProps)
 
   function handleTitleChange(id: string, title: string) {
     setPanoramas((prev) => prev.map((p) => (p.id === id ? { ...p, title } : p)));
+  }
+
+  async function handleSetCover(id: string) {
+    const res = await fetch(`/api/projects/${projectId}/cover`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ panoramaId: id }),
+    });
+
+    if (res.ok) {
+      setCoverPanoramaId(id);
+      toast.success("Kapak fotoğrafı güncellendi.");
+    } else {
+      toast.error("Kapak fotoğrafı ayarlanamadı.");
+    }
   }
 
   if (panoramas.length === 0) {
@@ -116,8 +133,10 @@ export function PanoramaList({ projectId, initialPanoramas }: PanoramaListProps)
                 title={p.title}
                 thumbnailUrl={p.thumbnailUrl}
                 status={p.status}
+                isCover={p.id === coverPanoramaId}
                 onDelete={handleDelete}
                 onTitleChange={handleTitleChange}
+                onSetCover={handleSetCover}
               />
             ))}
           </div>

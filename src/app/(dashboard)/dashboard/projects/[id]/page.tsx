@@ -60,7 +60,7 @@ export default async function ProjectDetailPage({
   const { data: project } = await supabase
     .from("projects")
     .select(
-      "id, title, description, type, status, location, cover_url, owner_id, created_at, updated_at"
+      "id, title, description, type, status, location, cover_url, owner_id, created_at, updated_at, metadata"
     )
     .eq("id", id)
     .is("deleted_at", null)
@@ -208,7 +208,13 @@ export default async function ProjectDetailPage({
         </TabsList>
 
         <TabsContent value="panoramas" className="mt-6">
-          <PanoramaListClient projectId={id} initialPanoramas={panoramas} />
+          <PanoramaListClient
+            projectId={id}
+            initialPanoramas={panoramas}
+            initialCoverPanoramaId={
+              (project.metadata as Record<string, unknown> | null)?.cover_panorama_id as string | null ?? null
+            }
+          />
         </TabsContent>
 
         <TabsContent value="hotspots" className="mt-6">

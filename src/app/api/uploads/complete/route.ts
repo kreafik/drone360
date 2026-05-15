@@ -5,6 +5,7 @@ import sharp from "sharp";
 import { requireAdmin } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { r2, R2_BUCKET } from "@/lib/r2/client";
+import { resolveUrl } from "@/lib/r2/urls";
 
 const completeSchema = z.object({
   panoramaId: z.string().uuid(),
@@ -82,6 +83,27 @@ export async function POST(request: NextRequest) {
       file_size: fileSize,
       thumbnail_key: thumbnailKey,
     }).eq("id", panoramaId);
+
+    // Auto-set project cover if not set yet
+    const { data: project } = await supabase
+      .from("projects")
+      .select("id, cover_url, metadata")
+      .eq("id", panorama.project_id)
+      .single();
+
+    if (project && !project.cover_url) {
+      const coverUrl = await resolveUrl(thumbnailKey);
+      if (coverUrl) {
+        const existingMeta = (project.metadata as Record<string, unknown>) ?? {};
+        await supabase
+          .from("projects")
+          .update({
+            cover_url: coverUrl,
+            metadata: { ...existingMeta, cover_panorama_id: panoramaId },
+          })
+          .eq("id", panorama.project_id);
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

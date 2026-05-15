@@ -4,12 +4,15 @@ import "@photo-sphere-viewer/core/index.css";
 import "@photo-sphere-viewer/markers-plugin/index.css";
 import "@photo-sphere-viewer/virtual-tour-plugin/index.css";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import { ImageIcon } from "lucide-react";
 import { Viewer } from "@photo-sphere-viewer/core";
 import { MarkersPlugin } from "@photo-sphere-viewer/markers-plugin";
 import { VirtualTourPlugin } from "@photo-sphere-viewer/virtual-tour-plugin";
 import { GyroscopePlugin } from "@photo-sphere-viewer/gyroscope-plugin";
 import { AutorotatePlugin } from "@photo-sphere-viewer/autorotate-plugin";
+import { cn } from "@/lib/utils";
 
 export interface ViewerHotspot {
   id: string;
@@ -37,6 +40,7 @@ export interface PanoramaViewerProps {
   initialId?: string;
   className?: string;
   showNavbar?: boolean;
+  showThumbnailNav?: boolean;
   onPanoramaChange?: (id: string) => void;
   onCameraChange?: (yaw: number, pitch: number, zoom: number) => void;
   onSceneClick?: (yaw: number, pitch: number) => void;
@@ -75,6 +79,7 @@ export function PanoramaViewer({
   initialId,
   className,
   showNavbar = true,
+  showThumbnailNav = false,
   onPanoramaChange,
   onCameraChange,
   onSceneClick,
@@ -85,6 +90,10 @@ export function PanoramaViewer({
   const vtRef = useRef<VirtualTourPlugin | null>(null);
   const initializedRef = useRef(false);
   const callbacksRef = useRef({ onPanoramaChange, onCameraChange, onSceneClick, onMarkerClick });
+  const activeThumbnailRef = useRef<HTMLButtonElement | null>(null);
+  const [activeId, setActiveId] = useState<string>(
+    panoramas.find((p) => p.id === initialId)?.id ?? panoramas[0]?.id ?? ""
+  );
 
   // Keep callbacks ref in sync without re-running the init effect
   useEffect(() => {
@@ -113,6 +122,9 @@ export function PanoramaViewer({
         defaultYaw: startPano.defaultYaw ?? 0,
         defaultPitch: startPano.defaultPitch ?? 0,
         defaultZoomLvl: startPano.defaultZoom ?? 50,
+        // Hide nadir/zenith black poles common in drone equirectangular footage
+        minPitch: -(Math.PI * 5) / 12,  // -75°
+        maxPitch: (Math.PI * 5) / 12,   // +75°
         navbar: showNavbar
           ? (["autorotate", "zoom", "move", "gyroscope", "fullscreen"] as never)
           : (false as never),
@@ -140,6 +152,7 @@ export function PanoramaViewer({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vt.addEventListener("node-changed" as never, (e: any) => {
         initializedRef.current = true;
+        setActiveId(e.node.id);
         callbacksRef.current.onPanoramaChange?.(e.node.id);
       });
 
@@ -186,5 +199,77 @@ export function PanoramaViewer({
     vt.setNodes(buildNodes(panoramas) as never, currentId);
   }, [panoramas]);
 
-  return <div ref={containerRef} className={className ?? "w-full h-full"} />;
+  // Auto-scroll the active thumbnail into view
+  useEffect(() => {
+    activeThumbnailRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [activeId]);
+
+  function navigateTo(id: string) {
+    (vtRef.current as unknown as { setCurrentNode?: (id: string) => void } | null)
+      ?.setCurrentNode?.(id);
+  }
+
+  const showNav = showThumbnailNav && panoramas.length > 1;
+
+  return (
+    <div ref={containerRef} className={className ?? "w-full h-full"}>
+      {showNav && (
+        <div
+          className="absolute left-0 right-0 z-[100] pointer-events-none"
+          style={{ bottom: showNavbar ? 48 : 0 }}
+        >
+          <div className="px-3 py-3">
+            <div
+              className="flex gap-2 overflow-x-auto pointer-events-auto justify-center py-2"
+              style={{ scrollbarWidth: "none" } as React.CSSProperties}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              {panoramas.map((p) => {
+                const isActive = p.id === activeId;
+                return (
+                  <button
+                    key={p.id}
+                    ref={isActive ? (el) => { activeThumbnailRef.current = el; } : undefined}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); navigateTo(p.id); }}
+                    className={cn(
+                      "shrink-0 rounded-lg overflow-hidden transition-all duration-200 ring-2",
+                      isActive
+                        ? "ring-primary opacity-100 scale-105"
+                        : "ring-white/20 opacity-55 hover:opacity-90 hover:ring-white/40"
+                    )}
+                  >
+                    <div className="w-24 h-[54px] relative bg-black/50">
+                      {p.thumbnailUrl ? (
+                        <Image
+                          src={p.thumbnailUrl}
+                          alt={p.title}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ImageIcon className="size-4 text-white/30" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="bg-black/75 px-2 py-1">
+                      <p className="text-white text-[10px] font-medium truncate leading-tight w-20">
+                        {p.title}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

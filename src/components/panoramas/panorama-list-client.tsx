@@ -11,8 +11,15 @@ const PanoramaList = dynamic(
 interface Props {
   projectId: string;
   initialPanoramas: PanoramaItem[];
+  initialCoverPanoramaId?: string | null;
 }
 
-export function PanoramaListClient({ projectId, initialPanoramas }: Props) {
-  return <PanoramaList projectId={projectId} initialPanoramas={initialPanoramas} />;
+export function PanoramaListClient({ projectId, initialPanoramas, initialCoverPanoramaId }: Props) {
+  return (
+    <PanoramaList
+      projectId={projectId}
+      initialPanoramas={initialPanoramas}
+      initialCoverPanoramaId={initialCoverPanoramaId}
+    />
+  );
 }

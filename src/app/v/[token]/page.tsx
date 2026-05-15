@@ -156,6 +156,7 @@ export default async function PublicViewerPage({
             shareId={share.id}
             className="w-full h-full"
             showNavbar
+            showThumbnailNav
           />
           <BrandOverlay
             brandName={branding?.brand_name ?? branding?.company_name}
