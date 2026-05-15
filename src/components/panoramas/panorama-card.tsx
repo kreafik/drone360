@@ -132,47 +132,41 @@ export function PanoramaCard({
             </div>
           )}
 
-          {/* Badges row — bottom-left */}
-          <div className="absolute bottom-2 left-2 flex items-center gap-1 pointer-events-none">
+          {/* Bottom-left: badges (always) + action buttons (hover) in one row */}
+          <div className="absolute bottom-2 left-2 flex items-center gap-1">
             {isCover && (
-              <div className="flex items-center gap-1 rounded-md bg-primary/90 px-2 py-0.5 text-xs font-medium text-primary-foreground">
+              <div className="flex items-center gap-1 rounded-md bg-primary/90 px-2 py-0.5 text-xs font-medium text-primary-foreground pointer-events-none">
                 <Star className="size-3 fill-current" />
                 Kapak
               </div>
             )}
             {isOverview && (
-              <div className="flex items-center gap-1 rounded-md bg-sky-500/90 px-2 py-0.5 text-xs font-medium text-white">
+              <div className="flex items-center gap-1 rounded-md bg-sky-500/90 px-2 py-0.5 text-xs font-medium text-white pointer-events-none">
                 <Map className="size-3" />
                 Harita
               </div>
             )}
+            {status === "ready" && !isCover && onSetCover && (
+              <button
+                type="button"
+                onClick={() => onSetCover(id)}
+                className="flex items-center gap-1 rounded-md bg-black/50 hover:bg-primary/80 px-2 py-0.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Star className="size-3" />
+                Kapak Yap
+              </button>
+            )}
+            {status === "ready" && !isOverview && onSetOverview && (
+              <button
+                type="button"
+                onClick={() => onSetOverview(id)}
+                className="flex items-center gap-1 rounded-md bg-black/50 hover:bg-sky-500/80 px-2 py-0.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Map className="size-3" />
+                Harita Yap
+              </button>
+            )}
           </div>
-
-          {/* Hover action buttons — only for ready panoramas that don't already have the badge */}
-          {status === "ready" && (
-            <div className="absolute bottom-2 left-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              {!isCover && onSetCover && (
-                <button
-                  type="button"
-                  onClick={() => onSetCover(id)}
-                  className="flex items-center gap-1 rounded-md bg-black/50 hover:bg-primary/80 px-2 py-0.5 text-xs font-medium text-white"
-                >
-                  <Star className="size-3" />
-                  Kapak Yap
-                </button>
-              )}
-              {!isOverview && onSetOverview && (
-                <button
-                  type="button"
-                  onClick={() => onSetOverview(id)}
-                  className="flex items-center gap-1 rounded-md bg-black/50 hover:bg-sky-500/80 px-2 py-0.5 text-xs font-medium text-white"
-                >
-                  <Map className="size-3" />
-                  Harita Yap
-                </button>
-              )}
-            </div>
-          )}
 
           {/* Drag handle */}
           <button
