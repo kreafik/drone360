@@ -155,6 +155,12 @@ export function PanoramaViewer({
               renderMode: "3d",
               nodes: buildNodes(panoramas),
               startNodeId: startPano.id,
+              transitionOptions: {
+                showLoader: false,
+                speed: "3rpm",
+                effect: "black",
+                rotation: true,
+              },
             },
           ],
           GyroscopePlugin,
