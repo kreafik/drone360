@@ -1,0 +1,106 @@
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { UserPlus } from "lucide-react";
+import { requireAdmin } from "@/lib/auth/permissions";
+import { createClient } from "@/lib/supabase/server";
+import { buttonVariants } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
+export const metadata = { title: "Kullanıcılar — drone360" };
+
+export default async function UsersPage() {
+  try {
+    await requireAdmin();
+  } catch {
+    redirect("/dashboard");
+  }
+
+  const supabase = await createClient();
+  const { data: users } = await supabase
+    .from("profiles")
+    .select("id, email, full_name, company_name, role, created_at")
+    .order("created_at", { ascending: false });
+
+  return (
+    <div className="max-w-6xl space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-3xl">Kullanıcılar</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {users?.length ?? 0} kayıtlı kullanıcı
+          </p>
+        </div>
+        <Link href="/dashboard/users/new" className={buttonVariants()}>
+          <UserPlus className="mr-2 size-4" strokeWidth={1.5} />
+          Yeni Müşteri
+        </Link>
+      </div>
+
+      {!users?.length ? (
+        <div className="flex flex-col items-center text-center py-16 rounded-xl border border-dashed border-border">
+          <div className="size-14 rounded-full bg-surface-elevated grid place-items-center mb-4">
+            <UserPlus className="size-6 text-subtle" strokeWidth={1.5} />
+          </div>
+          <h3 className="font-display text-xl mb-2">Henüz müşteri yok</h3>
+          <p className="text-muted-foreground text-sm max-w-xs mb-6">
+            Müşteri davet ederek projelerini görüntülemelerini sağlayın.
+          </p>
+          <Link href="/dashboard/users/new" className={buttonVariants()}>
+            Müşteri Davet Et
+          </Link>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-surface">
+                <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-subtle font-medium">
+                  Ad / E-posta
+                </th>
+                <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-subtle font-medium hidden sm:table-cell">
+                  Şirket
+                </th>
+                <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-subtle font-medium">
+                  Rol
+                </th>
+                <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-subtle font-medium hidden md:table-cell">
+                  Kayıt
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {users.map((user) => (
+                <tr key={user.id} className="hover:bg-surface/60 transition-colors">
+                  <td className="px-4 py-3.5">
+                    <div>
+                      <p className="font-medium">
+                        {user.full_name ?? "—"}
+                      </p>
+                      <p className="text-muted-foreground text-xs mt-0.5">
+                        {user.email}
+                      </p>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3.5 text-muted-foreground hidden sm:table-cell">
+                    {user.company_name ?? "—"}
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <Badge
+                      variant={user.role === "admin" ? "default" : "secondary"}
+                      className="text-xs"
+                    >
+                      {user.role === "admin" ? "Admin" : "Müşteri"}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3.5 text-muted-foreground text-xs hidden md:table-cell">
+                    {new Date(user.created_at).toLocaleDateString("tr-TR")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

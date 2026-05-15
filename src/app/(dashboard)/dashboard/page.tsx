@@ -15,16 +15,35 @@ async function getStats() {
 
   const projectsQuery = supabase
     .from("projects")
-    .select("id", { count: "exact", head: true });
-
-  if (!isAdmin) {
-    projectsQuery.eq("owner_id", profile.id);
-  }
-
+    .select("id", { count: "exact", head: true })
+    .is("deleted_at", null);
+  if (!isAdmin) projectsQuery.eq("owner_id", profile.id);
   const { count: projectCount } = await projectsQuery;
+
+  // Total views in last 30 days
+  const from30 = new Date();
+  from30.setDate(from30.getDate() - 30);
+  const viewsQuery = supabase
+    .from("analytics_events")
+    .select("id", { count: "exact", head: true })
+    .eq("event_type", "view_start")
+    .gte("created_at", from30.toISOString());
+  const { count: viewCount } = await viewsQuery;
+
+  // Client count (admin only)
+  let clientCount: number | null = null;
+  if (isAdmin) {
+    const { count } = await supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "client");
+    clientCount = count ?? 0;
+  }
 
   return {
     projectCount: projectCount ?? 0,
+    viewCount: viewCount ?? 0,
+    clientCount,
     isAdmin,
     profile,
   };
@@ -61,7 +80,7 @@ export default async function DashboardPage() {
   const stats = await getStats();
   if (!stats) return null;
 
-  const { projectCount, isAdmin, profile } = stats;
+  const { projectCount, viewCount, clientCount, isAdmin, profile } = stats;
   const greeting = profile.full_name
     ? `Hoş geldiniz, ${profile.full_name.split(" ")[0]}`
     : "Hoş geldiniz";
@@ -90,15 +109,15 @@ export default async function DashboardPage() {
           hint="Tüm aktif projeler"
         />
         <StatCard
-          label="Görüntülenme"
-          value="—"
+          label="Görüntülenme (30g)"
+          value={viewCount}
           icon={Eye}
-          hint="Analytics Phase 6'da aktif olacak"
+          hint="Son 30 günde toplam"
         />
-        {isAdmin && (
+        {isAdmin && clientCount !== null && (
           <StatCard
             label="Müşteriler"
-            value="—"
+            value={clientCount}
             icon={Users}
             hint="Kayıtlı müşteri sayısı"
           />

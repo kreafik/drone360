@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(New-Item *)",
+      "PowerShell(cd \"C:\\\\Users\\\\CJ\\\\Desktop\\\\www\\\\drone360\"; $env:SUPABASE_ACCESS_TOKEN = \"\"; npx supabase login --no-browser 2>&1 | Select-Object -First 5)",
+      "PowerShell(Get-Process *)",
+      "Skill(ui-ux-pro-max:ui-ux-pro-max)",
+      "Bash(node *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(Get-Content \"node_modules/@base-ui/react/select/index.js\")",
+      "Bash(Select-Object -First 5)",
+      "Bash(npm install *)",
+      "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\CJ\\\\Desktop\\\\www\\\\drone360\\\\src\\\\app\\\\v\\\\[token]\")",
+      "Bash(Out-Null)",
+      "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\CJ\\\\Desktop\\\\www\\\\drone360\\\\src\\\\app\\\\v\\\\[token]\\\\password\")",
+      "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\CJ\\\\Desktop\\\\www\\\\drone360\\\\src\\\\app\\\\embed\\\\[token]\")",
+      "Bash(Write-Output \"done\")",
+      "Bash(mkdir -p \"C:\\\\Users\\\\CJ\\\\Desktop\\\\www\\\\drone360\\\\src\\\\app\\\\v\\\\[token]\\\\password\")",
+      "Bash(mkdir -p \"C:\\\\Users\\\\CJ\\\\Desktop\\\\www\\\\drone360\\\\src\\\\app\\\\embed\\\\[token]\")",
+      "Bash(npm list *)",
+      "Bash(Get-ChildItem -Recurse -Path \"src/app/\\(dashboard\\)/dashboard/projects\")",
+      "Bash(Select-Object Name, FullName)",
+      "Bash(ls src/app/api/)",
+      "Bash(dir src\\\\app\\\\api /b)"
+    ]
+  }
+}
