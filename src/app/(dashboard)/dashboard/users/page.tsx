@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { UserEditModal } from "@/components/users/user-edit-modal";
 
 export const metadata = { title: "Kullanıcılar — drone360" };
 
@@ -18,7 +19,7 @@ export default async function UsersPage() {
   const supabase = await createClient();
   const { data: users } = await supabase
     .from("profiles")
-    .select("id, email, full_name, company_name, role, created_at")
+    .select("id, email, full_name, company_name, role, created_at, brand_name, brand_logo_url, brand_primary_color")
     .order("created_at", { ascending: false });
 
   return (
@@ -60,43 +61,78 @@ export default async function UsersPage() {
                 <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-subtle font-medium hidden sm:table-cell">
                   Şirket
                 </th>
+                <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-subtle font-medium hidden lg:table-cell">
+                  Marka
+                </th>
                 <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-subtle font-medium">
                   Rol
                 </th>
                 <th className="text-left px-4 py-3 text-xs uppercase tracking-wider text-subtle font-medium hidden md:table-cell">
                   Kayıt
                 </th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {users.map((user) => (
-                <tr key={user.id} className="hover:bg-surface/60 transition-colors">
-                  <td className="px-4 py-3.5">
-                    <div>
-                      <p className="font-medium">
-                        {user.full_name ?? "—"}
-                      </p>
-                      <p className="text-muted-foreground text-xs mt-0.5">
-                        {user.email}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5 text-muted-foreground hidden sm:table-cell">
-                    {user.company_name ?? "—"}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <Badge
-                      variant={user.role === "admin" ? "default" : "secondary"}
-                      className="text-xs"
-                    >
-                      {user.role === "admin" ? "Admin" : "Müşteri"}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3.5 text-muted-foreground text-xs hidden md:table-cell">
-                    {new Date(user.created_at).toLocaleDateString("tr-TR")}
-                  </td>
-                </tr>
-              ))}
+              {users.map((user) => {
+                const brandColor = user.brand_primary_color;
+                const brandName = user.brand_name;
+                const brandLogoUrl = user.brand_logo_url;
+
+                return (
+                  <tr key={user.id} className="hover:bg-surface/60 transition-colors">
+                    <td className="px-4 py-3.5">
+                      <div>
+                        <p className="font-medium">{user.full_name ?? "—"}</p>
+                        <p className="text-muted-foreground text-xs mt-0.5">{user.email}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5 text-muted-foreground hidden sm:table-cell">
+                      {user.company_name ?? "—"}
+                    </td>
+                    <td className="px-4 py-3.5 hidden lg:table-cell">
+                      {brandName || brandLogoUrl ? (
+                        <div className="flex items-center gap-2">
+                          {brandColor && (
+                            <span
+                              className="inline-block size-3 rounded-full shrink-0 border border-border"
+                              style={{ background: brandColor }}
+                            />
+                          )}
+                          <span className="text-sm truncate max-w-[120px]">
+                            {brandName ?? user.company_name ?? "—"}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <Badge
+                        variant={user.role === "admin" ? "default" : "secondary"}
+                        className="text-xs"
+                      >
+                        {user.role === "admin" ? "Admin" : "Müşteri"}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3.5 text-muted-foreground text-xs hidden md:table-cell">
+                      {new Date(user.created_at).toLocaleDateString("tr-TR")}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <UserEditModal
+                        user={{
+                          id: user.id,
+                          fullName: user.full_name,
+                          companyName: user.company_name,
+                          brandName,
+                          brandLogoUrl,
+                          brandPrimaryColor: brandColor,
+                        }}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveUrls } from "@/lib/r2/urls";
 import { AnalyticsViewer } from "@/components/viewer/analytics-viewer";
+import { BrandOverlay } from "@/components/viewer/brand-overlay";
 import type { ViewerPanorama } from "@/components/viewer/panorama-viewer";
 
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }) {
@@ -77,12 +78,26 @@ export default async function PublicViewerPage({
 
   const { data: project } = await supabase
     .from("projects")
-    .select("id, title")
+    .select("id, title, owner_id")
     .eq("id", projectId)
     .is("deleted_at", null)
     .single();
 
   if (!project) notFound();
+
+  // Fetch owner branding
+  const { data: ownerProfile } = await supabase
+    .from("profiles")
+    .select("brand_name, brand_logo_url, brand_primary_color, company_name")
+    .eq("id", project.owner_id)
+    .single();
+
+  const branding = ownerProfile as {
+    brand_name: string | null;
+    brand_logo_url: string | null;
+    brand_primary_color: string | null;
+    company_name: string | null;
+  } | null;
 
   const { data: rawPanoramas } = await supabase
     .from("panoramas")
@@ -134,13 +149,20 @@ export default async function PublicViewerPage({
           <p className="text-white/50 text-sm">Bu turda henüz panorama bulunmuyor.</p>
         </div>
       ) : (
-        <AnalyticsViewer
-          panoramas={panoramas}
-          projectId={projectId}
-          shareId={share.id}
-          className="w-full h-full"
-          showNavbar
-        />
+        <>
+          <AnalyticsViewer
+            panoramas={panoramas}
+            projectId={projectId}
+            shareId={share.id}
+            className="w-full h-full"
+            showNavbar
+          />
+          <BrandOverlay
+            brandName={branding?.brand_name ?? branding?.company_name}
+            brandLogoUrl={branding?.brand_logo_url}
+            brandPrimaryColor={branding?.brand_primary_color}
+          />
+        </>
       )}
     </div>
   );
