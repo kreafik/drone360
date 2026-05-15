@@ -78,7 +78,7 @@ export default async function PublicViewerPage({
 
   const { data: project } = await supabase
     .from("projects")
-    .select("id, title, owner_id")
+    .select("id, title, owner_id, metadata")
     .eq("id", projectId)
     .is("deleted_at", null)
     .single();
@@ -157,6 +157,9 @@ export default async function PublicViewerPage({
             className="w-full h-full"
             showNavbar
             showThumbnailNav
+            overviewPanoramaId={
+              ((project.metadata as Record<string, unknown> | null)?.overview_panorama_id as string | null) ?? null
+            }
           />
           <BrandOverlay
             brandName={branding?.brand_name ?? branding?.company_name}

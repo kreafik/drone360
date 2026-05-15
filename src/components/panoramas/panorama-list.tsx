@@ -33,11 +33,13 @@ interface PanoramaListProps {
   projectId: string;
   initialPanoramas: PanoramaItem[];
   initialCoverPanoramaId?: string | null;
+  initialOverviewPanoramaId?: string | null;
 }
 
-export function PanoramaList({ projectId, initialPanoramas, initialCoverPanoramaId }: PanoramaListProps) {
+export function PanoramaList({ projectId, initialPanoramas, initialCoverPanoramaId, initialOverviewPanoramaId }: PanoramaListProps) {
   const [panoramas, setPanoramas] = useState(initialPanoramas);
   const [coverPanoramaId, setCoverPanoramaId] = useState<string | null>(initialCoverPanoramaId ?? null);
+  const [overviewPanoramaId, setOverviewPanoramaId] = useState<string | null>(initialOverviewPanoramaId ?? null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -71,6 +73,20 @@ export function PanoramaList({ projectId, initialPanoramas, initialCoverPanorama
 
   function handleTitleChange(id: string, title: string) {
     setPanoramas((prev) => prev.map((p) => (p.id === id ? { ...p, title } : p)));
+  }
+
+  async function handleSetOverview(id: string) {
+    const res = await fetch(`/api/projects/${projectId}/overview`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ panoramaId: id }),
+    });
+    if (res.ok) {
+      setOverviewPanoramaId(id);
+      toast.success("Harita panoraması güncellendi.");
+    } else {
+      toast.error("Harita panoraması ayarlanamadı.");
+    }
   }
 
   async function handleSetCover(id: string) {
@@ -134,9 +150,11 @@ export function PanoramaList({ projectId, initialPanoramas, initialCoverPanorama
                 thumbnailUrl={p.thumbnailUrl}
                 status={p.status}
                 isCover={p.id === coverPanoramaId}
+                isOverview={p.id === overviewPanoramaId}
                 onDelete={handleDelete}
                 onTitleChange={handleTitleChange}
                 onSetCover={handleSetCover}
+                onSetOverview={handleSetOverview}
               />
             ))}
           </div>

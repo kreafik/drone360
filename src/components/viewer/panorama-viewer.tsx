@@ -6,7 +6,7 @@ import "@photo-sphere-viewer/virtual-tour-plugin/index.css";
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ImageIcon } from "lucide-react";
+import { ImageIcon, Map } from "lucide-react";
 import { Viewer } from "@photo-sphere-viewer/core";
 import { MarkersPlugin } from "@photo-sphere-viewer/markers-plugin";
 import { VirtualTourPlugin } from "@photo-sphere-viewer/virtual-tour-plugin";
@@ -41,6 +41,7 @@ export interface PanoramaViewerProps {
   className?: string;
   showNavbar?: boolean;
   showThumbnailNav?: boolean;
+  overviewPanoramaId?: string | null;
   onPanoramaChange?: (id: string) => void;
   onCameraChange?: (yaw: number, pitch: number, zoom: number) => void;
   onSceneClick?: (yaw: number, pitch: number) => void;
@@ -80,6 +81,7 @@ export function PanoramaViewer({
   className,
   showNavbar = true,
   showThumbnailNav = false,
+  overviewPanoramaId,
   onPanoramaChange,
   onCameraChange,
   onSceneClick,
@@ -212,6 +214,14 @@ export function PanoramaViewer({
 
   const showNav = showThumbnailNav && panoramas.length > 1;
 
+  // Overview panorama pinned first, rest in original order
+  const navPanoramas = overviewPanoramaId
+    ? [
+        ...panoramas.filter((p) => p.id === overviewPanoramaId),
+        ...panoramas.filter((p) => p.id !== overviewPanoramaId),
+      ]
+    : panoramas;
+
   return (
     <div ref={containerRef} className={className ?? "w-full h-full"}>
       {showNav && (
@@ -225,8 +235,9 @@ export function PanoramaViewer({
               style={{ scrollbarWidth: "none" } as React.CSSProperties}
               onPointerDown={(e) => e.stopPropagation()}
             >
-              {panoramas.map((p) => {
+              {navPanoramas.map((p) => {
                 const isActive = p.id === activeId;
+                const isOverview = p.id === overviewPanoramaId;
                 return (
                   <button
                     key={p.id}
@@ -252,6 +263,11 @@ export function PanoramaViewer({
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <ImageIcon className="size-4 text-white/30" />
+                        </div>
+                      )}
+                      {isOverview && (
+                        <div className="absolute top-1 right-1 rounded bg-sky-500/90 p-0.5">
+                          <Map className="size-3 text-white" />
                         </div>
                       )}
                     </div>

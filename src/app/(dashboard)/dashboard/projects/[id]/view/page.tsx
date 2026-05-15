@@ -27,7 +27,7 @@ export default async function ProjectViewPage({
   const supabase = await createClient();
   const { data: project } = await supabase
     .from("projects")
-    .select("id, title")
+    .select("id, title, metadata")
     .eq("id", id)
     .is("deleted_at", null)
     .single();
@@ -99,6 +99,9 @@ export default async function ProjectViewPage({
           className="absolute inset-0"
           showNavbar
           showThumbnailNav
+          overviewPanoramaId={
+            ((project.metadata as Record<string, unknown> | null)?.overview_panorama_id as string | null) ?? null
+          }
         />
       )}
     </div>

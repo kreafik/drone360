@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import Image from "next/image";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Pencil, Trash2, Check, X, ImageIcon, Star } from "lucide-react";
+import { GripVertical, Pencil, Trash2, Check, X, ImageIcon, Star, Map } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,9 +21,11 @@ interface PanoramaCardProps {
   thumbnailUrl: string | null;
   status: string;
   isCover?: boolean;
+  isOverview?: boolean;
   onDelete: (id: string) => void;
   onTitleChange: (id: string, title: string) => void;
   onSetCover?: (id: string) => void;
+  onSetOverview?: (id: string) => void;
 }
 
 export function PanoramaCard({
@@ -32,9 +34,11 @@ export function PanoramaCard({
   thumbnailUrl,
   status,
   isCover = false,
+  isOverview = false,
   onDelete,
   onTitleChange,
   onSetCover,
+  onSetOverview,
 }: PanoramaCardProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
@@ -128,24 +132,46 @@ export function PanoramaCard({
             </div>
           )}
 
-          {/* Cover badge */}
-          {isCover && (
-            <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-primary/90 px-2 py-0.5 text-xs font-medium text-primary-foreground pointer-events-none">
-              <Star className="size-3 fill-current" />
-              Kapak
-            </div>
-          )}
+          {/* Badges row — bottom-left */}
+          <div className="absolute bottom-2 left-2 flex items-center gap-1 pointer-events-none">
+            {isCover && (
+              <div className="flex items-center gap-1 rounded-md bg-primary/90 px-2 py-0.5 text-xs font-medium text-primary-foreground">
+                <Star className="size-3 fill-current" />
+                Kapak
+              </div>
+            )}
+            {isOverview && (
+              <div className="flex items-center gap-1 rounded-md bg-sky-500/90 px-2 py-0.5 text-xs font-medium text-white">
+                <Map className="size-3" />
+                Harita
+              </div>
+            )}
+          </div>
 
-          {/* Set cover button — only for ready non-cover panoramas */}
-          {status === "ready" && !isCover && onSetCover && (
-            <button
-              type="button"
-              onClick={() => onSetCover(id)}
-              className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-black/50 hover:bg-primary/80 px-2 py-0.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <Star className="size-3" />
-              Kapak Yap
-            </button>
+          {/* Hover action buttons — only for ready panoramas that don't already have the badge */}
+          {status === "ready" && (
+            <div className="absolute bottom-2 left-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {!isCover && onSetCover && (
+                <button
+                  type="button"
+                  onClick={() => onSetCover(id)}
+                  className="flex items-center gap-1 rounded-md bg-black/50 hover:bg-primary/80 px-2 py-0.5 text-xs font-medium text-white"
+                >
+                  <Star className="size-3" />
+                  Kapak Yap
+                </button>
+              )}
+              {!isOverview && onSetOverview && (
+                <button
+                  type="button"
+                  onClick={() => onSetOverview(id)}
+                  className="flex items-center gap-1 rounded-md bg-black/50 hover:bg-sky-500/80 px-2 py-0.5 text-xs font-medium text-white"
+                >
+                  <Map className="size-3" />
+                  Harita Yap
+                </button>
+              )}
+            </div>
           )}
 
           {/* Drag handle */}

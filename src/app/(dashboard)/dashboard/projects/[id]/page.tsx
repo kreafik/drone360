@@ -208,13 +208,17 @@ export default async function ProjectDetailPage({
         </TabsList>
 
         <TabsContent value="panoramas" className="mt-6">
-          <PanoramaListClient
-            projectId={id}
-            initialPanoramas={panoramas}
-            initialCoverPanoramaId={
-              (project.metadata as Record<string, unknown> | null)?.cover_panorama_id as string | null ?? null
-            }
-          />
+          {(() => {
+            const meta = (project.metadata as Record<string, unknown> | null) ?? {};
+            return (
+              <PanoramaListClient
+                projectId={id}
+                initialPanoramas={panoramas}
+                initialCoverPanoramaId={(meta.cover_panorama_id as string | null) ?? null}
+                initialOverviewPanoramaId={(meta.overview_panorama_id as string | null) ?? null}
+              />
+            );
+          })()}
         </TabsContent>
 
         <TabsContent value="hotspots" className="mt-6">
