@@ -41,6 +41,7 @@ export interface PanoramaViewerProps {
   className?: string;
   showNavbar?: boolean;
   showThumbnailNav?: boolean;
+  autorotate?: boolean;
   overviewPanoramaId?: string | null;
   onPanoramaChange?: (id: string) => void;
   onCameraChange?: (yaw: number, pitch: number, zoom: number) => void;
@@ -105,6 +106,7 @@ export function PanoramaViewer({
   className,
   showNavbar = true,
   showThumbnailNav = false,
+  autorotate = true,
   overviewPanoramaId,
   onPanoramaChange,
   onCameraChange,
@@ -171,7 +173,7 @@ export function PanoramaViewer({
             },
           ],
           GyroscopePlugin,
-          [AutorotatePlugin, { autostartDelay: 2000 }],
+          ...(autorotate ? [[AutorotatePlugin, { autostartDelay: 2000 }] as never] : []),
         ],
       });
 

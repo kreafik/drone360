@@ -110,6 +110,7 @@ export function HotspotEditor({ panoramas }: HotspotEditorProps) {
             panoramas={panoramas}
             initialId={currentPanoId}
             className="w-full h-full absolute inset-0"
+            autorotate={false}
             onPanoramaChange={setCurrentPanoId}
             onCameraChange={(yaw, pitch, zoom) => setCamera({ yaw, pitch, zoom })}
             onSceneClick={handleSceneClick}
