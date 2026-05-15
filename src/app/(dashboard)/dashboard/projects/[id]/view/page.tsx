@@ -21,17 +21,21 @@ export default async function ProjectViewPage({
 }) {
   const { id } = await params;
 
-  const profile = await getProfile();
-  if (!profile) return null;
-
   const supabase = await createClient();
-  const { data: project } = await supabase
-    .from("projects")
-    .select("id, title, metadata")
-    .eq("id", id)
-    .is("deleted_at", null)
-    .single();
 
+  // Fetch profile + project in parallel
+  const [profile, projectRes] = await Promise.all([
+    getProfile(),
+    supabase
+      .from("projects")
+      .select("id, title, metadata")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .single(),
+  ]);
+
+  if (!profile) return null;
+  const project = projectRes.data;
   if (!project) notFound();
 
   const { data: rawPanoramas } = await supabase
@@ -44,15 +48,19 @@ export default async function ProjectViewPage({
 
   const pList = rawPanoramas ?? [];
 
-  const { data: rawHotspots } = await supabase
-    .from("hotspots")
-    .select("id, panorama_id, type, yaw, pitch, title, description, target_panorama_id")
-    .in("panorama_id", pList.map((p) => p.id));
+  // Fetch hotspots + storage URLs + thumbnail URLs in parallel
+  const [hotspotsRes, storageUrls, thumbnailUrls] = await Promise.all([
+    pList.length
+      ? supabase
+          .from("hotspots")
+          .select("id, panorama_id, type, yaw, pitch, title, description, target_panorama_id")
+          .in("panorama_id", pList.map((p) => p.id))
+      : Promise.resolve({ data: [] }),
+    resolveUrls(pList.map((p) => p.storage_key)),
+    resolveUrls(pList.map((p) => p.thumbnail_key)),
+  ]);
 
-  const hotspots = rawHotspots ?? [];
-
-  const storageUrls = await resolveUrls(pList.map((p) => p.storage_key));
-  const thumbnailUrls = await resolveUrls(pList.map((p) => p.thumbnail_key));
+  const hotspots = hotspotsRes.data ?? [];
 
   const panoramas: ViewerPanorama[] = pList.map((p, i) => ({
     id: p.id,

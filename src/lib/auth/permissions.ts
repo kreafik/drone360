@@ -1,14 +1,9 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
-export async function getUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
-}
-
-export async function getProfile() {
+// cache() deduplicates across a single request — avoids repeated auth+DB round trips
+// when getProfile() is called from multiple places (page + generateMetadata etc.)
+export const getProfile = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -22,6 +17,14 @@ export async function getProfile() {
     .single();
 
   return data;
+});
+
+export async function getUser() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
 }
 
 export async function requireAdmin() {

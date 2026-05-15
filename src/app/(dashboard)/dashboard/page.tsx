@@ -13,37 +13,35 @@ async function getStats() {
 
   const isAdmin = profile.role === "admin";
 
+  const from30 = new Date();
+  from30.setDate(from30.getDate() - 30);
+
   const projectsQuery = supabase
     .from("projects")
     .select("id", { count: "exact", head: true })
     .is("deleted_at", null);
   if (!isAdmin) projectsQuery.eq("owner_id", profile.id);
-  const { count: projectCount } = await projectsQuery;
 
-  // Total views in last 30 days
-  const from30 = new Date();
-  from30.setDate(from30.getDate() - 30);
   const viewsQuery = supabase
     .from("analytics_events")
     .select("id", { count: "exact", head: true })
     .eq("event_type", "view_start")
     .gte("created_at", from30.toISOString());
-  const { count: viewCount } = await viewsQuery;
 
-  // Client count (admin only)
-  let clientCount: number | null = null;
-  if (isAdmin) {
-    const { count } = await supabase
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("role", "client");
-    clientCount = count ?? 0;
-  }
+  const clientsQuery = isAdmin
+    ? supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "client")
+    : null;
+
+  const [projectsRes, viewsRes, clientsRes] = await Promise.all([
+    projectsQuery,
+    viewsQuery,
+    clientsQuery ?? Promise.resolve({ count: null }),
+  ]);
 
   return {
-    projectCount: projectCount ?? 0,
-    viewCount: viewCount ?? 0,
-    clientCount,
+    projectCount: projectsRes.count ?? 0,
+    viewCount: viewsRes.count ?? 0,
+    clientCount: isAdmin ? (clientsRes.count ?? 0) : null,
     isAdmin,
     profile,
   };

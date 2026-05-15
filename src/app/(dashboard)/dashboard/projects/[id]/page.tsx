@@ -52,41 +52,57 @@ export default async function ProjectDetailPage({
   const { id } = await params;
 
   const supabase = await createClient();
-  const profile = await getProfile();
+
+  // Fetch profile + project in parallel
+  const [profile, projectRes] = await Promise.all([
+    getProfile(),
+    supabase
+      .from("projects")
+      .select("id, title, description, type, status, location, cover_url, owner_id, created_at, updated_at, metadata")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .single(),
+  ]);
+
   if (!profile) return null;
+  const project = projectRes.data;
+  if (!project) notFound();
 
   const isAdmin = profile.role === "admin";
 
-  const { data: project } = await supabase
-    .from("projects")
-    .select(
-      "id, title, description, type, status, location, cover_url, owner_id, created_at, updated_at, metadata"
-    )
-    .eq("id", id)
-    .is("deleted_at", null)
-    .single();
+  // Fetch users (admin) + panoramas in parallel
+  const [usersRes, panoramasRes] = await Promise.all([
+    isAdmin
+      ? supabase.from("profiles").select("id, email, full_name").order("full_name")
+      : Promise.resolve({ data: [] }),
+    supabase
+      .from("panoramas")
+      .select("id, title, position, status, storage_key, thumbnail_key, default_yaw, default_pitch, default_zoom")
+      .eq("project_id", id)
+      .is("deleted_at", null)
+      .order("position"),
+  ]);
 
-  if (!project) notFound();
+  const users: { id: string; email: string; full_name: string | null }[] = usersRes.data ?? [];
+  const pList = panoramasRes.data ?? [];
 
-  let users: { id: string; email: string; full_name: string | null }[] = [];
-  if (isAdmin) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, email, full_name")
-      .order("full_name");
-    users = data ?? [];
-  }
+  // For hotspot editor — only ready panoramas
+  const readyPanoramas = pList.filter((p) => p.status === "ready");
 
-  // Fetch panoramas ordered by position
-  const { data: rawPanoramas } = await supabase
-    .from("panoramas")
-    .select("id, title, position, status, storage_key, thumbnail_key, default_yaw, default_pitch, default_zoom")
-    .eq("project_id", id)
-    .is("deleted_at", null)
-    .order("position");
+  // Fetch hotspots + all URL batches in parallel
+  const [rawHotspotsRes, thumbnailUrls, storageUrls, readyThumbnails] = await Promise.all([
+    readyPanoramas.length
+      ? supabase
+          .from("hotspots")
+          .select("id, panorama_id, type, yaw, pitch, title, description, target_panorama_id")
+          .in("panorama_id", readyPanoramas.map((p) => p.id))
+      : Promise.resolve({ data: [] }),
+    resolveUrls(pList.map((p) => p.thumbnail_key)),
+    resolveUrls(readyPanoramas.map((p) => p.storage_key)),
+    resolveUrls(readyPanoramas.map((p) => p.thumbnail_key)),
+  ]);
 
-  const pList = rawPanoramas ?? [];
-  const thumbnailUrls = await resolveUrls(pList.map((p) => p.thumbnail_key));
+  const hotspots = rawHotspotsRes.data ?? [];
 
   // For panorama list tab
   const panoramas: PanoramaItem[] = pList.map((p, i) => ({
@@ -96,19 +112,6 @@ export default async function ProjectDetailPage({
     status: p.status,
     thumbnailUrl: thumbnailUrls[i],
   }));
-
-  // For hotspot editor tab — only ready panoramas with full URLs
-  const readyPanoramas = pList.filter((p) => p.status === "ready");
-  const { data: rawHotspots } = readyPanoramas.length
-    ? await supabase
-        .from("hotspots")
-        .select("id, panorama_id, type, yaw, pitch, title, description, target_panorama_id")
-        .in("panorama_id", readyPanoramas.map((p) => p.id))
-    : { data: [] };
-
-  const hotspots = rawHotspots ?? [];
-  const storageUrls = await resolveUrls(readyPanoramas.map((p) => p.storage_key));
-  const readyThumbnails = await resolveUrls(readyPanoramas.map((p) => p.thumbnail_key));
 
   const editorPanoramas: ViewerPanorama[] = readyPanoramas.map((p, i) => ({
     id: p.id,
