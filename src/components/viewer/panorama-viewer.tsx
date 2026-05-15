@@ -66,16 +66,23 @@ function buildNodes(panoramas: ViewerPanorama[]) {
       .map((h) => {
         if (h.type === "pin") {
           const label = (h.title ?? "Geçiş").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          const targetPano = panoramas.find((p) => p.id === h.targetPanoramaId);
+          const thumbUrl = targetPano?.thumbnailUrl ?? "";
+          const thumbContent = thumbUrl
+            ? `<img src="${thumbUrl}" class="d360-nav-pin__thumb" alt="" />`
+            : `<div class="d360-nav-pin__no-thumb">&#8594;</div>`;
           return {
             id: h.id,
             position: { yaw: h.yaw, pitch: h.pitch },
             html: `<div class="d360-nav-pin">
-              <div class="d360-nav-pin__icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              <div class="d360-nav-pin__bubble">
+                ${thumbContent}
+                <div class="d360-nav-pin__gloss"></div>
+                <span class="d360-nav-pin__label">${label}</span>
               </div>
-              <span class="d360-nav-pin__label">${label}</span>
+              <div class="d360-nav-pin__tail"></div>
             </div>`,
-            size: { width: 120, height: 64 },
+            size: { width: 82, height: 90 },
             anchor: "bottom center" as const,
             data: h,
           };
