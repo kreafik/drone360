@@ -122,9 +122,6 @@ export function PanoramaViewer({
         defaultYaw: startPano.defaultYaw ?? 0,
         defaultPitch: startPano.defaultPitch ?? 0,
         defaultZoomLvl: startPano.defaultZoom ?? 50,
-        // Hide nadir/zenith black poles common in drone equirectangular footage
-        minPitch: -(Math.PI * 5) / 12,  // -75°
-        maxPitch: (Math.PI * 5) / 12,   // +75°
         navbar: showNavbar
           ? (["autorotate", "zoom", "move", "gyroscope", "fullscreen"] as never)
           : (false as never),
