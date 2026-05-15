@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useState, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Save, ImageIcon, Info, ArrowRight, Plus } from "lucide-react";
+import { Trash2, Save, ImageIcon, Info, ArrowRight, MapPin, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { HotspotForm } from "./hotspot-form";
@@ -178,10 +178,16 @@ export function HotspotEditor({ panoramas }: HotspotEditorProps) {
               className="flex items-center gap-2 rounded-lg border border-border bg-surface p-2 text-sm"
             >
               <span className="shrink-0 text-muted-foreground">
-                {h.type === "info" ? <Info className="size-3.5" /> : <ArrowRight className="size-3.5" />}
+                {h.type === "info" ? (
+                  <Info className="size-3.5" />
+                ) : h.type === "pin" ? (
+                  <MapPin className="size-3.5 text-amber-400" />
+                ) : (
+                  <ArrowRight className="size-3.5" />
+                )}
               </span>
               <span className="flex-1 min-w-0 truncate">
-                {h.title ?? (h.type === "link" ? "Geçiş" : "Bilgi")}
+                {h.title ?? (h.type === "link" ? "Geçiş" : h.type === "pin" ? "Sabit Pin" : "Bilgi")}
               </span>
               <button
                 type="button"

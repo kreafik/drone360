@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 
 const createSchema = z.object({
   panoramaId: z.string().uuid(),
-  type: z.enum(["link", "info"]),
+  type: z.enum(["link", "info", "pin"]),
   yaw: z.number(),
   pitch: z.number(),
   title: z.string().min(1).max(100).optional(),
@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
 
   const { panoramaId, type, yaw, pitch, title, description, targetPanoramaId } = parsed.data;
 
-  if (type === "link" && !targetPanoramaId) {
-    return NextResponse.json({ error: { message: "Link hotspot için hedef panorama gereklidir." } }, { status: 400 });
+  if ((type === "link" || type === "pin") && !targetPanoramaId) {
+    return NextResponse.json({ error: { message: "Geçiş hotspot için hedef panorama gereklidir." } }, { status: 400 });
   }
 
   const supabase = await createClient();

@@ -33,7 +33,7 @@ export function HotspotForm({
   position,
   editing,
 }: HotspotFormProps) {
-  const [type, setType] = useState<"link" | "info">(editing?.type ?? "info");
+  const [type, setType] = useState<"link" | "info" | "pin">(editing?.type ?? "info");
   const [title, setTitle] = useState(editing?.title ?? "");
   const [description, setDescription] = useState(editing?.description ?? "");
   const [targetPanoramaId, setTargetPanoramaId] = useState(editing?.targetPanoramaId ?? "");
@@ -59,7 +59,7 @@ export function HotspotForm({
           }),
         });
       } else {
-        if (type === "link" && !targetPanoramaId) {
+        if ((type === "link" || type === "pin") && !targetPanoramaId) {
           toast.error("Lütfen hedef panoramayı seçin.");
           setSaving(false);
           return;
@@ -74,7 +74,7 @@ export function HotspotForm({
             pitch: position!.pitch,
             title: title || undefined,
             description: description || undefined,
-            targetPanoramaId: type === "link" ? targetPanoramaId : undefined,
+            targetPanoramaId: (type === "link" || type === "pin") ? targetPanoramaId : undefined,
           }),
         });
       }
@@ -124,13 +124,24 @@ export function HotspotForm({
                     : "border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
-                ↗ Geçiş
+                ↗ Geçiş (Ok)
+              </button>
+              <button
+                type="button"
+                onClick={() => setType("pin")}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                  type === "pin"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                📍 Sabit Pin
               </button>
             </div>
           )}
 
-          {/* Link: target panorama */}
-          {type === "link" && (
+          {/* Link / Pin: target panorama */}
+          {(type === "link" || type === "pin") && (
             <div className="space-y-1.5">
               <Label>Hedef Panorama</Label>
               <select
@@ -152,11 +163,13 @@ export function HotspotForm({
 
           {/* Title */}
           <div className="space-y-1.5">
-            <Label>{type === "link" ? "Etiket (opsiyonel)" : "Başlık"}</Label>
+            <Label>
+              {type === "info" ? "Başlık" : "Etiket (opsiyonel)"}
+            </Label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder={type === "link" ? "Geçiş etiketi…" : "Hotspot başlığı…"}
+              placeholder={type === "info" ? "Hotspot başlığı…" : "Pin etiketi…"}
               maxLength={100}
             />
           </div>

@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 
 export interface ViewerHotspot {
   id: string;
-  type: "link" | "info";
+  type: "link" | "info" | "pin";
   yaw: number;
   pitch: number;
   title?: string | null;
@@ -62,16 +62,34 @@ function buildNodes(panoramas: ViewerPanorama[]) {
         name: h.title ?? undefined,
       })),
     markers: p.hotspots
-      .filter((h) => h.type === "info")
-      .map((h) => ({
-        id: h.id,
-        position: { yaw: h.yaw, pitch: h.pitch },
-        html: `<div class="d360-info-marker" aria-label="${h.title ?? "Bilgi"}">i</div>`,
-        tooltip: h.title ? { content: h.description ? `<strong>${h.title}</strong><br>${h.description}` : h.title, trigger: "hover" as const } : undefined,
-        size: { width: 40, height: 40 },
-        anchor: "center center" as const,
-        data: h,
-      })),
+      .filter((h) => h.type === "info" || h.type === "pin")
+      .map((h) => {
+        if (h.type === "pin") {
+          const label = (h.title ?? "Geçiş").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          return {
+            id: h.id,
+            position: { yaw: h.yaw, pitch: h.pitch },
+            html: `<div class="d360-nav-pin">
+              <div class="d360-nav-pin__icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
+              <span class="d360-nav-pin__label">${label}</span>
+            </div>`,
+            size: { width: 120, height: 64 },
+            anchor: "bottom center" as const,
+            data: h,
+          };
+        }
+        return {
+          id: h.id,
+          position: { yaw: h.yaw, pitch: h.pitch },
+          html: `<div class="d360-info-marker" aria-label="${h.title ?? "Bilgi"}">i</div>`,
+          tooltip: h.title ? { content: h.description ? `<strong>${h.title}</strong><br>${h.description}` : h.title, trigger: "hover" as const } : undefined,
+          size: { width: 40, height: 40 },
+          anchor: "center center" as const,
+          data: h,
+        };
+      }),
   }));
 }
 
@@ -172,7 +190,13 @@ export function PanoramaViewer({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       markers.addEventListener("select-marker" as never, (e: any) => {
         const hotspot = e.marker?.data as ViewerHotspot | undefined;
-        if (hotspot) callbacksRef.current.onMarkerClick?.(hotspot);
+        if (hotspot) {
+          if (hotspot.type === "pin" && hotspot.targetPanoramaId) {
+            (vtRef.current as unknown as { setCurrentNode?: (id: string) => void } | null)
+              ?.setCurrentNode?.(hotspot.targetPanoramaId);
+          }
+          callbacksRef.current.onMarkerClick?.(hotspot);
+        }
       });
 
     }, 0);
