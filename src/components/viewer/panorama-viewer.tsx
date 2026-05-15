@@ -4,7 +4,7 @@ import "@photo-sphere-viewer/core/index.css";
 import "@photo-sphere-viewer/markers-plugin/index.css";
 import "@photo-sphere-viewer/virtual-tour-plugin/index.css";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import Image from "next/image";
 import { ImageIcon, Map } from "lucide-react";
 import { Viewer } from "@photo-sphere-viewer/core";
@@ -33,6 +33,10 @@ export interface ViewerPanorama {
   defaultPitch?: number | null;
   defaultZoom?: number | null;
   hotspots: ViewerHotspot[];
+}
+
+export interface PanoramaViewerHandle {
+  goTo: (id: string) => void;
 }
 
 export interface PanoramaViewerProps {
@@ -100,7 +104,7 @@ function buildNodes(panoramas: ViewerPanorama[]) {
   }));
 }
 
-export function PanoramaViewer({
+export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerProps>(function PanoramaViewer({
   panoramas,
   initialId,
   className,
@@ -112,7 +116,7 @@ export function PanoramaViewer({
   onCameraChange,
   onSceneClick,
   onMarkerClick,
-}: PanoramaViewerProps) {
+}: PanoramaViewerProps, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const vtRef = useRef<VirtualTourPlugin | null>(null);
@@ -254,6 +258,8 @@ export function PanoramaViewer({
       ?.setCurrentNode?.(id);
   }
 
+  useImperativeHandle(ref, () => ({ goTo: navigateTo }));
+
   const showNav = showThumbnailNav && panoramas.length > 1;
 
   // Overview panorama pinned first, rest in original order
@@ -356,4 +362,4 @@ export function PanoramaViewer({
       )}
     </div>
   );
-}
+});

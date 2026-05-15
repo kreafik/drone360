@@ -1,13 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useCallback, useTransition } from "react";
+import { useState, useCallback, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, Save, ImageIcon, Info, ArrowRight, MapPin, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { HotspotForm } from "./hotspot-form";
-import type { ViewerPanorama, ViewerHotspot } from "./panorama-viewer";
+import type { ViewerPanorama, ViewerHotspot, PanoramaViewerHandle } from "./panorama-viewer";
 
 const PanoramaViewerNoSSR = dynamic(
   () => import("./panorama-viewer").then((m) => m.PanoramaViewer),
@@ -22,6 +22,7 @@ interface HotspotEditorProps {
 export function HotspotEditor({ panoramas }: HotspotEditorProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const viewerRef = useRef<PanoramaViewerHandle>(null);
   const [currentPanoId, setCurrentPanoId] = useState(panoramas[0]?.id ?? "");
   const [pendingPos, setPendingPos] = useState<{ yaw: number; pitch: number } | null>(null);
   const [editingHotspot, setEditingHotspot] = useState<ViewerHotspot | null>(null);
@@ -107,6 +108,7 @@ export function HotspotEditor({ panoramas }: HotspotEditorProps) {
 
         <div className="relative flex-1 rounded-xl overflow-hidden border border-border min-h-[400px]">
           <PanoramaViewerNoSSR
+            ref={viewerRef}
             panoramas={panoramas}
             initialId={currentPanoId}
             className="w-full h-full absolute inset-0"
@@ -125,7 +127,7 @@ export function HotspotEditor({ panoramas }: HotspotEditorProps) {
               <button
                 key={p.id}
                 type="button"
-                onClick={() => setCurrentPanoId(p.id)}
+                onClick={() => { setCurrentPanoId(p.id); viewerRef.current?.goTo(p.id); }}
                 className={`shrink-0 relative rounded-lg overflow-hidden border-2 transition-colors ${
                   p.id === currentPanoId ? "border-primary" : "border-transparent"
                 }`}
