@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ImageIcon, Network, BarChart2, Share2, Eye } from "lucide-react";
@@ -7,6 +8,7 @@ import { resolveUrls } from "@/lib/r2/urls";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ProjectActions } from "@/components/projects/project-actions";
 import type { PanoramaItem } from "@/components/panoramas/panorama-list";
 import { PanoramaListClient } from "@/components/panoramas/panorama-list-client";
@@ -44,67 +46,26 @@ export async function generateMetadata({
   return { title: data ? `${data.title} — drone360` : "Proje — drone360" };
 }
 
-export default async function ProjectDetailPage({
-  params,
+// ─── Panoramas tab ────────────────────────────────────────────────────────────
+
+async function PanoramasTabContent({
+  projectId,
+  metadata,
 }: {
-  params: Promise<{ id: string }>;
+  projectId: string;
+  metadata: unknown;
 }) {
-  const { id } = await params;
-
   const supabase = await createClient();
+  const { data: rawPanoramas } = await supabase
+    .from("panoramas")
+    .select("id, title, position, status, storage_key, thumbnail_key, default_yaw, default_pitch, default_zoom")
+    .eq("project_id", projectId)
+    .is("deleted_at", null)
+    .order("position");
 
-  // Fetch profile + project in parallel
-  const [profile, projectRes] = await Promise.all([
-    getProfile(),
-    supabase
-      .from("projects")
-      .select("id, title, description, type, status, location, cover_url, owner_id, created_at, updated_at, metadata")
-      .eq("id", id)
-      .is("deleted_at", null)
-      .single(),
-  ]);
+  const pList = rawPanoramas ?? [];
+  const thumbnailUrls = await resolveUrls(pList.map((p) => p.thumbnail_key));
 
-  if (!profile) return null;
-  const project = projectRes.data;
-  if (!project) notFound();
-
-  const isAdmin = profile.role === "admin";
-
-  // Fetch users (admin) + panoramas in parallel
-  const [usersRes, panoramasRes] = await Promise.all([
-    isAdmin
-      ? supabase.from("profiles").select("id, email, full_name").order("full_name")
-      : Promise.resolve({ data: [] }),
-    supabase
-      .from("panoramas")
-      .select("id, title, position, status, storage_key, thumbnail_key, default_yaw, default_pitch, default_zoom")
-      .eq("project_id", id)
-      .is("deleted_at", null)
-      .order("position"),
-  ]);
-
-  const users: { id: string; email: string; full_name: string | null }[] = usersRes.data ?? [];
-  const pList = panoramasRes.data ?? [];
-
-  // For hotspot editor — only ready panoramas
-  const readyPanoramas = pList.filter((p) => p.status === "ready");
-
-  // Fetch hotspots + all URL batches in parallel
-  const [rawHotspotsRes, thumbnailUrls, storageUrls, readyThumbnails] = await Promise.all([
-    readyPanoramas.length
-      ? supabase
-          .from("hotspots")
-          .select("id, panorama_id, type, yaw, pitch, title, description, target_panorama_id")
-          .in("panorama_id", readyPanoramas.map((p) => p.id))
-      : Promise.resolve({ data: [] }),
-    resolveUrls(pList.map((p) => p.thumbnail_key)),
-    resolveUrls(readyPanoramas.map((p) => p.storage_key)),
-    resolveUrls(readyPanoramas.map((p) => p.thumbnail_key)),
-  ]);
-
-  const hotspots = rawHotspotsRes.data ?? [];
-
-  // For panorama list tab
   const panoramas: PanoramaItem[] = pList.map((p, i) => ({
     id: p.id,
     title: p.title,
@@ -112,6 +73,59 @@ export default async function ProjectDetailPage({
     status: p.status,
     thumbnailUrl: thumbnailUrls[i],
   }));
+
+  const meta = (metadata as Record<string, unknown> | null) ?? {};
+  return (
+    <PanoramaListClient
+      projectId={projectId}
+      initialPanoramas={panoramas}
+      initialCoverPanoramaId={(meta.cover_panorama_id as string | null) ?? null}
+      initialOverviewPanoramaId={(meta.overview_panorama_id as string | null) ?? null}
+    />
+  );
+}
+
+function PanoramasSkeleton() {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="rounded-xl border border-border bg-surface overflow-hidden">
+          <Skeleton className="h-36 w-full rounded-none" />
+          <div className="p-3 space-y-2">
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Hotspots tab ─────────────────────────────────────────────────────────────
+
+async function HotspotsTabContent({ projectId }: { projectId: string }) {
+  const supabase = await createClient();
+  const { data: rawPanoramas } = await supabase
+    .from("panoramas")
+    .select("id, title, position, status, storage_key, thumbnail_key, default_yaw, default_pitch, default_zoom")
+    .eq("project_id", projectId)
+    .eq("status", "ready")
+    .is("deleted_at", null)
+    .order("position");
+
+  const readyPanoramas = rawPanoramas ?? [];
+
+  const [rawHotspotsRes, storageUrls, readyThumbnails] = await Promise.all([
+    readyPanoramas.length
+      ? supabase
+          .from("hotspots")
+          .select("id, panorama_id, type, yaw, pitch, title, description, target_panorama_id")
+          .in("panorama_id", readyPanoramas.map((p) => p.id))
+      : Promise.resolve({ data: [] }),
+    resolveUrls(readyPanoramas.map((p) => p.storage_key)),
+    resolveUrls(readyPanoramas.map((p) => p.thumbnail_key)),
+  ]);
+
+  const hotspots = rawHotspotsRes.data ?? [];
 
   const editorPanoramas: ViewerPanorama[] = readyPanoramas.map((p, i) => ({
     id: p.id,
@@ -125,7 +139,7 @@ export default async function ProjectDetailPage({
       .filter((h) => h.panorama_id === p.id)
       .map((h) => ({
         id: h.id,
-        type: h.type as "link" | "info",
+        type: h.type as "link" | "info" | "pin",
         yaw: h.yaw,
         pitch: h.pitch,
         title: h.title,
@@ -134,11 +148,64 @@ export default async function ProjectDetailPage({
       })),
   }));
 
+  return <HotspotEditorClient panoramas={editorPanoramas} projectId={projectId} />;
+}
+
+function HotspotsSkeleton() {
+  return (
+    <div className="flex flex-col lg:flex-row gap-4 min-h-[400px]">
+      <Skeleton className="flex-1 rounded-xl min-h-[400px]" />
+      <div className="w-full lg:w-64 space-y-2">
+        <Skeleton className="h-5 w-40" />
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-10 w-full rounded-lg" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default async function ProjectDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  // Fetch only what the header needs — renders immediately
+  const [profile, projectRes, usersRes, hasReadyRes] = await Promise.all([
+    getProfile(),
+    supabase
+      .from("projects")
+      .select("id, title, description, type, status, location, cover_url, owner_id, created_at, updated_at, metadata")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .single(),
+    supabase.from("profiles").select("id, email, full_name").order("full_name"),
+    supabase
+      .from("panoramas")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", id)
+      .eq("status", "ready")
+      .is("deleted_at", null),
+  ]);
+
+  if (!profile) return null;
+  const project = projectRes.data;
+  if (!project) notFound();
+
+  const isAdmin = profile.role === "admin";
+  const hasReady = (hasReadyRes.count ?? 0) > 0;
+  const users = isAdmin ? (usersRes.data ?? []) : [];
+
   const statusStyle = statusConfig[project.status] ?? statusConfig.draft;
 
   return (
     <div className="max-w-6xl space-y-6">
-      {/* Header */}
+      {/* Header — renders immediately */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -163,7 +230,7 @@ export default async function ProjectDetailPage({
         </div>
 
         <div className="flex items-center gap-2">
-          {panoramas.some((p) => p.status === "ready") && (
+          {hasReady && (
             <Link
               href={`/dashboard/projects/${id}/view`}
               className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
@@ -211,21 +278,15 @@ export default async function ProjectDetailPage({
         </TabsList>
 
         <TabsContent value="panoramas" className="mt-6">
-          {(() => {
-            const meta = (project.metadata as Record<string, unknown> | null) ?? {};
-            return (
-              <PanoramaListClient
-                projectId={id}
-                initialPanoramas={panoramas}
-                initialCoverPanoramaId={(meta.cover_panorama_id as string | null) ?? null}
-                initialOverviewPanoramaId={(meta.overview_panorama_id as string | null) ?? null}
-              />
-            );
-          })()}
+          <Suspense fallback={<PanoramasSkeleton />}>
+            <PanoramasTabContent projectId={id} metadata={project.metadata} />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="hotspots" className="mt-6">
-          <HotspotEditorClient panoramas={editorPanoramas} projectId={id} />
+          <Suspense fallback={<HotspotsSkeleton />}>
+            <HotspotsTabContent projectId={id} />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-6">
@@ -239,4 +300,3 @@ export default async function ProjectDetailPage({
     </div>
   );
 }
-
