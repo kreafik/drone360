@@ -30,7 +30,7 @@ export interface Panorama {
 export interface Hotspot {
   id: string;
   panoramaId: string;
-  type: "link" | "info";
+  type: "link" | "info" | "pin" | "text";
   yaw: number;
   pitch: number;
   targetPanoramaId: string | null;
@@ -39,4 +39,16 @@ export interface Hotspot {
   imageUrl: string | null;
   icon: string;
   color: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface TextHotspotMetadata {
+  content: string;
+  fontSize: "sm" | "md" | "lg" | "xl" | "2xl";
+  fontWeight: "normal" | "semibold" | "bold";
+  color: string;
+  bgColor: string;
+  bgOpacity: number;
+  borderRadius: "none" | "sm" | "md" | "lg";
+  animation: "none" | "fade" | "glow" | "float";
 }

@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useState, useCallback, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Save, ImageIcon, Info, ArrowRight, MapPin, Plus } from "lucide-react";
+import { Trash2, Save, ImageIcon, Info, ArrowRight, MapPin, Plus, Type } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { HotspotForm } from "./hotspot-form";
@@ -185,12 +185,16 @@ export function HotspotEditor({ panoramas }: HotspotEditorProps) {
                   <Info className="size-3.5" />
                 ) : h.type === "pin" ? (
                   <MapPin className="size-3.5 text-amber-400" />
+                ) : h.type === "text" ? (
+                  <Type className="size-3.5 text-violet-400" />
                 ) : (
                   <ArrowRight className="size-3.5" />
                 )}
               </span>
               <span className="flex-1 min-w-0 truncate">
-                {h.title ?? (h.type === "link" ? "Geçiş" : h.type === "pin" ? "Sabit Pin" : "Bilgi")}
+                {h.type === "text"
+                  ? (((h.metadata as Record<string, unknown> | undefined)?.content as string | undefined)?.slice(0, 24) ?? "Yazı")
+                  : (h.title ?? (h.type === "link" ? "Geçiş" : h.type === "pin" ? "Sabit Pin" : "Bilgi"))}
               </span>
               <button
                 type="button"

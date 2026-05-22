@@ -292,3 +292,67 @@
   background: rgba(255, 255, 255, 0.2);
   transform: scale(1.1);
 }
+
+/* PSV text label marker */
+@keyframes d360-text-fadein {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes d360-text-glow {
+  0%, 100% {
+    filter: brightness(1) drop-shadow(0 0 4px rgba(255, 255, 255, 0.25));
+  }
+  50% {
+    filter: brightness(1.15) drop-shadow(0 0 14px rgba(255, 255, 255, 0.65));
+  }
+}
+
+@keyframes d360-text-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+.d360-text-marker {
+  font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
+  line-height: 1.4;
+  padding: 10px 18px;
+  white-space: pre-wrap;
+  max-width: 320px;
+  text-align: center;
+  user-select: none;
+  cursor: default;
+  letter-spacing: 0.01em;
+  word-break: break-word;
+}
+
+/* Non-interactive: override PSV's default pointer cursor */
+.psv-marker:has(.d360-text-marker) {
+  cursor: default !important;
+}
+
+.d360-text-anim-fade {
+  animation: d360-text-fadein 0.7s ease-out forwards;
+}
+
+.d360-text-anim-glow {
+  animation:
+    d360-text-fadein 0.7s ease-out forwards,
+    d360-text-glow 2.8s ease-in-out 0.7s infinite;
+}
+
+.d360-text-anim-float {
+  animation:
+    d360-text-fadein 0.7s ease-out forwards,
+    d360-text-float 3.5s ease-in-out 0.7s infinite;
+}

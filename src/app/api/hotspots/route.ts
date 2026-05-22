@@ -2,15 +2,17 @@ import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/types/supabase";
 
 const createSchema = z.object({
   panoramaId: z.string().uuid(),
-  type: z.enum(["link", "info", "pin"]),
+  type: z.enum(["link", "info", "pin", "text"]),
   yaw: z.number(),
   pitch: z.number(),
   title: z.string().min(1).max(100).optional(),
   description: z.string().max(500).optional(),
   targetPanoramaId: z.string().uuid().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -26,7 +28,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: { message: "Geçersiz veri.", details: parsed.error.flatten() } }, { status: 400 });
   }
 
-  const { panoramaId, type, yaw, pitch, title, description, targetPanoramaId } = parsed.data;
+  const { panoramaId, type, yaw, pitch, title, description, targetPanoramaId, metadata } = parsed.data;
 
   if ((type === "link" || type === "pin") && !targetPanoramaId) {
     return NextResponse.json({ error: { message: "Geçiş hotspot için hedef panorama gereklidir." } }, { status: 400 });
@@ -43,6 +45,7 @@ export async function POST(request: NextRequest) {
       title: title ?? null,
       description: description ?? null,
       target_panorama_id: targetPanoramaId ?? null,
+      ...(metadata !== undefined ? { metadata: metadata as unknown as Json } : {}),
     })
     .select("id")
     .single();

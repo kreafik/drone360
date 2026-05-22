@@ -13,15 +13,17 @@ import { VirtualTourPlugin } from "@photo-sphere-viewer/virtual-tour-plugin";
 import { GyroscopePlugin } from "@photo-sphere-viewer/gyroscope-plugin";
 import { AutorotatePlugin } from "@photo-sphere-viewer/autorotate-plugin";
 import { cn } from "@/lib/utils";
+import type { TextHotspotMetadata } from "@/types/domain";
 
 export interface ViewerHotspot {
   id: string;
-  type: "link" | "info" | "pin";
+  type: "link" | "info" | "pin" | "text";
   yaw: number;
   pitch: number;
   title?: string | null;
   description?: string | null;
   targetPanoramaId?: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ViewerPanorama {
@@ -53,6 +55,34 @@ export interface PanoramaViewerProps {
   onMarkerClick?: (hotspot: ViewerHotspot) => void;
 }
 
+function buildTextMarkerHtml(h: ViewerHotspot): string {
+  const meta = (h.metadata ?? {}) as Partial<TextHotspotMetadata>;
+  const fontSizeMap: Record<string, number> = { sm: 13, md: 17, lg: 22, xl: 30, "2xl": 40 };
+  const fontWeightMap: Record<string, number> = { normal: 400, semibold: 600, bold: 700 };
+  const radiusMap: Record<string, number> = { none: 0, sm: 6, md: 12, lg: 20 };
+
+  const raw = meta.content ?? h.title ?? "";
+  const content = raw
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br>");
+
+  const fs = fontSizeMap[meta.fontSize ?? "md"] ?? 17;
+  const fw = fontWeightMap[meta.fontWeight ?? "normal"] ?? 400;
+  const color = meta.color ?? "#ffffff";
+  const bgHex = meta.bgColor ?? "#000000";
+  const bgOpacity = (meta.bgOpacity ?? 55) / 100;
+  const radius = radiusMap[meta.borderRadius ?? "md"] ?? 12;
+  const animClass = meta.animation && meta.animation !== "none" ? ` d360-text-anim-${meta.animation}` : "";
+
+  const r = parseInt(bgHex.slice(1, 3), 16) || 0;
+  const g = parseInt(bgHex.slice(3, 5), 16) || 0;
+  const b = parseInt(bgHex.slice(5, 7), 16) || 0;
+
+  return `<div class="d360-text-marker${animClass}" style="font-size:${fs}px;font-weight:${fw};color:${color};background:rgba(${r},${g},${b},${bgOpacity});border-radius:${radius}px;">${content}</div>`;
+}
+
 function buildNodes(panoramas: ViewerPanorama[]) {
   return panoramas.map((p) => ({
     id: p.id,
@@ -67,7 +97,7 @@ function buildNodes(panoramas: ViewerPanorama[]) {
         name: h.title ?? undefined,
       })),
     markers: p.hotspots
-      .filter((h) => h.type === "info" || h.type === "pin")
+      .filter((h) => h.type === "info" || h.type === "pin" || h.type === "text")
       .map((h) => {
         if (h.type === "pin") {
           const label = (h.title ?? "Geçiş").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -89,6 +119,15 @@ function buildNodes(panoramas: ViewerPanorama[]) {
             </div>`,
             size: { width: 82, height: 90 },
             anchor: "bottom center" as const,
+            data: h,
+          };
+        }
+        if (h.type === "text") {
+          return {
+            id: h.id,
+            position: { yaw: h.yaw, pitch: h.pitch },
+            html: buildTextMarkerHtml(h),
+            anchor: "center center" as const,
             data: h,
           };
         }
