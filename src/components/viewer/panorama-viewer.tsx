@@ -13,11 +13,11 @@ import { VirtualTourPlugin } from "@photo-sphere-viewer/virtual-tour-plugin";
 import { GyroscopePlugin } from "@photo-sphere-viewer/gyroscope-plugin";
 import { AutorotatePlugin } from "@photo-sphere-viewer/autorotate-plugin";
 import { cn } from "@/lib/utils";
-import type { TextHotspotMetadata } from "@/types/domain";
+import type { TextHotspotMetadata, AreaHotspotMetadata } from "@/types/domain";
 
 export interface ViewerHotspot {
   id: string;
-  type: "link" | "info" | "pin" | "text";
+  type: "link" | "info" | "pin" | "text" | "area" | "floor";
   yaw: number;
   pitch: number;
   title?: string | null;
@@ -83,6 +83,42 @@ function buildTextMarkerHtml(h: ViewerHotspot): string {
   return `<div class="d360-text-marker${animClass}" style="font-size:${fs}px;font-weight:${fw};color:${color};background:rgba(${r},${g},${b},${bgOpacity});border-radius:${radius}px;">${content}</div>`;
 }
 
+const AREA_STATUS_LABELS: Record<string, string> = {
+  satilik: "Satılık",
+  kiralik: "Kiralık",
+  opsiyonda: "Opsiyonda",
+};
+const AREA_STATUS_COLORS: Record<string, string> = {
+  satilik: "16,185,129",
+  kiralik: "14,165,233",
+  opsiyonda: "245,158,11",
+};
+
+function buildAreaMarkerHtml(h: ViewerHotspot): string {
+  const meta = (h.metadata ?? {}) as Partial<AreaHotspotMetadata>;
+  const status = meta.status ?? "satilik";
+  const label = (meta.label ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const size = meta.size ?? "md";
+  const animClass = meta.animation !== "none" ? " d360-area-anim-pulse" : "";
+  const colorRGB = AREA_STATUS_COLORS[status] ?? "16,185,129";
+  const statusLabel = AREA_STATUS_LABELS[status] ?? "Satılık";
+
+  return `<div class="d360-area-marker d360-area-${size}${animClass}" style="--c:${colorRGB};">
+    <div class="d360-area-marker__badge">${statusLabel}</div>
+    ${label ? `<div class="d360-area-marker__label">${label}</div>` : ""}
+  </div>`;
+}
+
+function buildFloorMarkerHtml(h: ViewerHotspot): string {
+  const label = (h.title ?? "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `<div class="d360-floor-marker">
+    <div class="d360-floor-marker__circle">
+      <span class="d360-floor-marker__icon">&#8593;</span>
+    </div>
+    ${label ? `<span class="d360-floor-marker__label">${label}</span>` : ""}
+  </div>`;
+}
+
 function buildNodes(panoramas: ViewerPanorama[]) {
   return panoramas.map((p) => ({
     id: p.id,
@@ -97,7 +133,7 @@ function buildNodes(panoramas: ViewerPanorama[]) {
         name: h.title ?? undefined,
       })),
     markers: p.hotspots
-      .filter((h) => h.type === "info" || h.type === "pin" || h.type === "text")
+      .filter((h) => h.type === "info" || h.type === "pin" || h.type === "text" || h.type === "area" || h.type === "floor")
       .map((h) => {
         if (h.type === "pin") {
           const label = (h.title ?? "Geçiş").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -127,6 +163,24 @@ function buildNodes(panoramas: ViewerPanorama[]) {
             id: h.id,
             position: { yaw: h.yaw, pitch: h.pitch },
             html: buildTextMarkerHtml(h),
+            anchor: "center center" as const,
+            data: h,
+          };
+        }
+        if (h.type === "area") {
+          return {
+            id: h.id,
+            position: { yaw: h.yaw, pitch: h.pitch },
+            html: buildAreaMarkerHtml(h),
+            anchor: "bottom center" as const,
+            data: h,
+          };
+        }
+        if (h.type === "floor") {
+          return {
+            id: h.id,
+            position: { yaw: h.yaw, pitch: h.pitch },
+            html: buildFloorMarkerHtml(h),
             anchor: "center center" as const,
             data: h,
           };
@@ -162,15 +216,22 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
   const initializedRef = useRef(false);
   const callbacksRef = useRef({ onPanoramaChange, onCameraChange, onSceneClick, onMarkerClick });
   const activeThumbnailRef = useRef<HTMLButtonElement | null>(null);
+  const panoramasRef = useRef(panoramas);
   const [activeId, setActiveId] = useState<string>(
     panoramas.find((p) => p.id === initialId)?.id ?? panoramas[0]?.id ?? ""
   );
   const [infoCard, setInfoCard] = useState<{ title: string; description?: string | null } | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Keep callbacks ref in sync without re-running the init effect
   useEffect(() => {
     callbacksRef.current = { onPanoramaChange, onCameraChange, onSceneClick, onMarkerClick };
   });
+
+  // Keep panoramasRef in sync for the monkey-patched setCurrentNode
+  useEffect(() => {
+    panoramasRef.current = panoramas;
+  }, [panoramas]);
 
   // Init once on mount.
   // setTimeout is intentional: React StrictMode runs effect → cleanup → effect again.
@@ -222,6 +283,17 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
 
       viewerRef.current = viewer;
       const vt = viewer.getPlugin(VirtualTourPlugin) as VirtualTourPlugin;
+
+      // Intercept ALL setCurrentNode calls (arrows, pins, thumbnail nav, goTo)
+      // to show the loading overlay before any navigation begins.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const origSetCurrentNode = (vt as any).setCurrentNode.bind(vt);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (vt as any).setCurrentNode = (nodeId: string, ...args: unknown[]) => {
+        if (initializedRef.current) setIsTransitioning(true);
+        return origSetCurrentNode(nodeId, ...args);
+      };
+
       vtRef.current = vt;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -229,6 +301,7 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
         initializedRef.current = true;
         setActiveId(e.node.id);
         setInfoCard(null);
+        setIsTransitioning(false);
         callbacksRef.current.onPanoramaChange?.(e.node.id);
       });
 
@@ -255,6 +328,26 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
               ?.setCurrentNode?.(hotspot.targetPanoramaId);
           } else if (hotspot.type === "info") {
             setInfoCard({ title: hotspot.title ?? "", description: hotspot.description });
+          } else if (hotspot.type === "area") {
+            const meta = (hotspot.metadata ?? {}) as Record<string, unknown>;
+            const statusLabel = AREA_STATUS_LABELS[(meta.status as string) ?? "satilik"] ?? "Satılık";
+            const label = meta.label as string | undefined;
+            setInfoCard({
+              title: label ? `${statusLabel} — ${label}` : statusLabel,
+              description: (meta.description as string | null | undefined) ?? null,
+            });
+          } else if (hotspot.type === "floor" && hotspot.targetPanoramaId) {
+            const targetId = hotspot.targetPanoramaId;
+            // Animate camera to look toward the floor hotspot, then transition to target panorama
+            viewer?.animate({
+              yaw: hotspot.yaw,
+              pitch: hotspot.pitch,
+              zoom: 75,
+              speed: "6rpm",
+            }).then(() => {
+              (vtRef.current as unknown as { setCurrentNode?: (id: string) => void } | null)
+                ?.setCurrentNode?.(targetId);
+            });
           }
           callbacksRef.current.onMarkerClick?.(hotspot);
         }
@@ -311,6 +404,24 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
 
   return (
     <div ref={containerRef} className={className ?? "w-full h-full"}>
+      {/* Top loading bar — shown during panorama transitions */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[2px] z-[500] overflow-hidden pointer-events-none"
+        style={{
+          opacity: isTransitioning ? 1 : 0,
+          transition: "opacity 0.3s ease",
+        }}
+      >
+        <div
+          className="absolute top-0 h-full w-[45%]"
+          style={{
+            background: "oklch(0.78 0.16 70)",
+            boxShadow: "0 0 8px 1px oklch(0.78 0.16 70 / 0.6)",
+            animation: "d360-topbar 1.1s ease-in-out infinite",
+          }}
+        />
+      </div>
+
       {/* Info card — shown when an info marker is tapped/clicked */}
       {infoCard && (
         <div

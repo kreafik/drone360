@@ -6,7 +6,7 @@ import type { Json } from "@/types/supabase";
 
 const createSchema = z.object({
   panoramaId: z.string().uuid(),
-  type: z.enum(["link", "info", "pin", "text"]),
+  type: z.enum(["link", "info", "pin", "text", "area", "floor"]),
   yaw: z.number(),
   pitch: z.number(),
   title: z.string().min(1).max(100).optional(),
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
   const { panoramaId, type, yaw, pitch, title, description, targetPanoramaId, metadata } = parsed.data;
 
-  if ((type === "link" || type === "pin") && !targetPanoramaId) {
+  if ((type === "link" || type === "pin" || type === "floor") && !targetPanoramaId) {
     return NextResponse.json({ error: { message: "Geçiş hotspot için hedef panorama gereklidir." } }, { status: 400 });
   }
 

@@ -356,3 +356,129 @@
     d360-text-fadein 0.7s ease-out forwards,
     d360-text-float 3.5s ease-in-out 0.7s infinite;
 }
+
+/* PSV area hotspot marker */
+.d360-area-marker {
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(var(--c), 0.45);
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.d360-area-marker:hover {
+  transform: scale(1.04) translateY(-2px);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.65);
+}
+
+.d360-area-sm { min-width: 120px; }
+.d360-area-md { min-width: 160px; }
+.d360-area-lg { min-width: 205px; }
+.d360-area-xl { min-width: 265px; }
+
+.d360-area-marker__badge {
+  padding: 5px 13px 4px;
+  background: rgba(var(--c), 0.88);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.d360-area-marker__label {
+  padding: 6px 13px 8px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+@keyframes d360-area-pulse {
+  0%, 100% {
+    box-shadow:
+      0 6px 24px rgba(0, 0, 0, 0.55),
+      0 0 0 0 rgba(var(--c), 0.55);
+  }
+  50% {
+    box-shadow:
+      0 6px 24px rgba(0, 0, 0, 0.55),
+      0 0 0 9px rgba(var(--c), 0);
+  }
+}
+
+.d360-area-anim-pulse {
+  animation: d360-area-pulse 2.4s ease-in-out infinite;
+}
+
+/* Floor navigation hotspot */
+.d360-floor-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.d360-floor-marker__circle {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.88);
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: d360-floor-pulse 2.2s ease-in-out infinite;
+  transition: transform 0.18s ease;
+}
+
+.d360-floor-marker:hover .d360-floor-marker__circle {
+  transform: scale(1.12);
+}
+
+.d360-floor-marker__icon {
+  position: relative;
+  z-index: 1;
+  font-size: 22px;
+  color: #fff;
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.9);
+}
+
+.d360-floor-marker__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  padding: 2px 8px;
+  border-radius: 100px;
+  white-space: nowrap;
+  max-width: 108px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+@keyframes d360-floor-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.35), 0 0 16px 3px rgba(255, 255, 255, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 0 9px rgba(255, 255, 255, 0), 0 0 26px 7px rgba(255, 255, 255, 0.22);
+  }
+}
+
+/* Panorama transition top bar */
+@keyframes d360-topbar {
+  0%   { transform: translateX(-150%); }
+  100% { transform: translateX(330%); }
+}

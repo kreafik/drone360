@@ -53,7 +53,7 @@ export function UploadDropzone({ projectId, onAllDone }: UploadDropzoneProps) {
     if (valid.length > 0) setUploads((prev) => [...prev, ...valid]);
   }
 
-  async function uploadSingle(state: FileUploadState): Promise<void> {
+  async function uploadSingle(state: FileUploadState): Promise<boolean> {
     updateUpload(state.id, { status: "uploading", progress: 5 });
 
     // 1. Get presigned URL
@@ -71,14 +71,14 @@ export function UploadDropzone({ projectId, onAllDone }: UploadDropzoneProps) {
     if (!signRes.ok) {
       const { error } = await signRes.json();
       updateUpload(state.id, { status: "error", error: error?.message ?? "İmzalama hatası." });
-      return;
+      return false;
     }
 
     const { panoramaId, uploadUrl } = await signRes.json();
     updateUpload(state.id, { progress: 10 });
 
     // 2. XHR PUT to R2 for progress tracking
-    await new Promise<void>((resolve, reject) => {
+    const xhrOk = await new Promise<boolean>((resolve) => {
       const xhr = new XMLHttpRequest();
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
@@ -86,18 +86,17 @@ export function UploadDropzone({ projectId, onAllDone }: UploadDropzoneProps) {
           updateUpload(state.id, { progress: pct });
         }
       };
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) resolve();
-        else reject(new Error(`R2 yükleme hatası: ${xhr.status}`));
-      };
-      xhr.onerror = () => reject(new Error("Ağ hatası. Bağlantınızı kontrol edin."));
+      xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
+      xhr.onerror = () => resolve(false);
       xhr.open("PUT", uploadUrl);
       xhr.setRequestHeader("Content-Type", state.file.type);
       xhr.send(state.file);
-    }).catch((err: Error) => {
-      updateUpload(state.id, { status: "error", error: err.message });
-      throw err;
     });
+
+    if (!xhrOk) {
+      updateUpload(state.id, { status: "error", error: "R2 yükleme hatası. Bağlantınızı kontrol edin." });
+      return false;
+    }
 
     updateUpload(state.id, { progress: 92 });
 
@@ -111,10 +110,11 @@ export function UploadDropzone({ projectId, onAllDone }: UploadDropzoneProps) {
     if (!completeRes.ok) {
       const { error } = await completeRes.json();
       updateUpload(state.id, { status: "error", error: error?.message ?? "İşleme hatası." });
-      return;
+      return false;
     }
 
     updateUpload(state.id, { status: "done", progress: 100 });
+    return true;
   }
 
   async function startUploads() {
@@ -122,12 +122,20 @@ export function UploadDropzone({ projectId, onAllDone }: UploadDropzoneProps) {
     setStarted(true);
 
     const pending = uploads.filter((u) => u.status === "pending");
-    await Promise.allSettled(pending.map((u) => uploadSingle(u)));
 
-    const hasError = uploads.some((u) => u.status === "error");
-    if (!hasError) {
-      toast.success(`${pending.length} panorama yüklendi.`);
+    // Sequential uploads — parallel requests would race on the DB position counter
+    // causing unique constraint violations when multiple files are uploaded at once.
+    let successCount = 0;
+    for (const u of pending) {
+      const ok = await uploadSingle(u);
+      if (ok) successCount++;
+    }
+
+    if (successCount > 0) {
+      toast.success(`${successCount} panorama yüklendi.`);
       onAllDone();
+    } else {
+      toast.error("Yükleme başarısız. Lütfen tekrar deneyin.");
     }
   }
 

@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useState, useCallback, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Save, ImageIcon, Info, ArrowRight, MapPin, Plus, Type } from "lucide-react";
+import { Trash2, Save, ImageIcon, Info, ArrowRight, MapPin, Plus, Type, Square, CircleDot } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { HotspotForm } from "./hotspot-form";
@@ -187,6 +187,10 @@ export function HotspotEditor({ panoramas }: HotspotEditorProps) {
                   <MapPin className="size-3.5 text-amber-400" />
                 ) : h.type === "text" ? (
                   <Type className="size-3.5 text-violet-400" />
+                ) : h.type === "area" ? (
+                  <Square className="size-3.5 text-emerald-400" />
+                ) : h.type === "floor" ? (
+                  <CircleDot className="size-3.5 text-sky-400" />
                 ) : (
                   <ArrowRight className="size-3.5" />
                 )}
@@ -194,7 +198,15 @@ export function HotspotEditor({ panoramas }: HotspotEditorProps) {
               <span className="flex-1 min-w-0 truncate">
                 {h.type === "text"
                   ? (((h.metadata as Record<string, unknown> | undefined)?.content as string | undefined)?.slice(0, 24) ?? "Yazı")
-                  : (h.title ?? (h.type === "link" ? "Geçiş" : h.type === "pin" ? "Sabit Pin" : "Bilgi"))}
+                  : h.type === "area"
+                  ? (() => {
+                      const m = (h.metadata ?? {}) as Record<string, unknown>;
+                      const s: Record<string, string> = { satilik: "Satılık", kiralik: "Kiralık", opsiyonda: "Opsiyonda" };
+                      const status = s[(m.status as string) ?? "satilik"] ?? "Satılık";
+                      const lbl = m.label as string | undefined;
+                      return lbl ? `${status} — ${lbl}` : status;
+                    })()
+                  : (h.title ?? (h.type === "link" ? "Geçiş" : h.type === "pin" ? "Sabit Pin" : h.type === "floor" ? "Zemin Geçiş" : "Bilgi"))}
               </span>
               <button
                 type="button"

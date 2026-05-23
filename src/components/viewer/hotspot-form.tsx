@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { ViewerPanorama, ViewerHotspot } from "./panorama-viewer";
-import type { TextHotspotMetadata } from "@/types/domain";
+import type { TextHotspotMetadata, AreaHotspotMetadata } from "@/types/domain";
 
 const selectCls =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring";
@@ -37,7 +37,7 @@ export function HotspotForm({
   position,
   editing,
 }: HotspotFormProps) {
-  const [type, setType] = useState<"link" | "info" | "pin" | "text">(
+  const [type, setType] = useState<"link" | "info" | "pin" | "text" | "area" | "floor">(
     editing?.type ?? "info"
   );
   const [title, setTitle] = useState(editing?.title ?? "");
@@ -64,6 +64,22 @@ export function HotspotForm({
     useState<TextHotspotMetadata["borderRadius"]>(editingMeta.borderRadius ?? "md");
   const [textAnimation, setTextAnimation] = useState<TextHotspotMetadata["animation"]>(
     editingMeta.animation ?? "glow"
+  );
+
+  const editingAreaMeta =
+    editing?.type === "area"
+      ? ((editing.metadata ?? {}) as Partial<AreaHotspotMetadata>)
+      : {};
+  const [areaStatus, setAreaStatus] = useState<AreaHotspotMetadata["status"]>(
+    editingAreaMeta.status ?? "satilik"
+  );
+  const [areaLabel, setAreaLabel] = useState(editingAreaMeta.label ?? "");
+  const [areaDescription, setAreaDescription] = useState(editingAreaMeta.description ?? "");
+  const [areaSize, setAreaSize] = useState<AreaHotspotMetadata["size"]>(
+    editingAreaMeta.size ?? "md"
+  );
+  const [areaAnimation, setAreaAnimation] = useState<AreaHotspotMetadata["animation"]>(
+    editingAreaMeta.animation ?? "pulse"
   );
 
   const [saving, setSaving] = useState(false);
@@ -118,6 +134,42 @@ export function HotspotForm({
         return;
       }
 
+      if (type === "area") {
+        const metadata: AreaHotspotMetadata = {
+          status: areaStatus,
+          label: areaLabel,
+          description: areaDescription || undefined,
+          size: areaSize,
+          animation: areaAnimation,
+        };
+        const res = isEditing
+          ? await fetch(`/api/hotspots/${editing.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ metadata }),
+            })
+          : await fetch("/api/hotspots", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                panoramaId,
+                type: "area",
+                yaw: position!.yaw,
+                pitch: position!.pitch,
+                metadata,
+              }),
+            });
+        if (!res.ok) {
+          const { error } = await res.json();
+          toast.error(error?.message ?? "Alan kaydedilemedi.");
+          return;
+        }
+        toast.success(isEditing ? "Alan güncellendi." : "Alan eklendi.");
+        onSaved();
+        onClose();
+        return;
+      }
+
       let res: Response;
       if (isEditing) {
         res = await fetch(`/api/hotspots/${editing.id}`, {
@@ -126,11 +178,12 @@ export function HotspotForm({
           body: JSON.stringify({
             title: title || undefined,
             description: description || null,
-            targetPanoramaId: type === "link" ? targetPanoramaId || null : null,
+            targetPanoramaId:
+              type === "link" || type === "floor" ? targetPanoramaId || null : null,
           }),
         });
       } else {
-        if ((type === "link" || type === "pin") && !targetPanoramaId) {
+        if ((type === "link" || type === "pin" || type === "floor") && !targetPanoramaId) {
           toast.error("Lütfen hedef panoramayı seçin.");
           return;
         }
@@ -145,7 +198,9 @@ export function HotspotForm({
             title: title || undefined,
             description: description || undefined,
             targetPanoramaId:
-              type === "link" || type === "pin" ? targetPanoramaId : undefined,
+              type === "link" || type === "pin" || type === "floor"
+                ? targetPanoramaId
+                : undefined,
           }),
         });
       }
@@ -175,20 +230,22 @@ export function HotspotForm({
         <div className="space-y-4">
           {/* Type selector — only when creating */}
           {!isEditing && (
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-3 gap-1">
               {(
                 [
-                  { value: "info", label: "ℹ Bilgi" },
-                  { value: "link", label: "↗ Geçiş" },
-                  { value: "pin", label: "📍 Pin" },
-                  { value: "text", label: "T Yazı" },
+                  { value: "info",  label: "ℹ Bilgi" },
+                  { value: "link",  label: "↗ Geçiş" },
+                  { value: "floor", label: "⬇ Zemin" },
+                  { value: "pin",   label: "📍 Pin" },
+                  { value: "text",  label: "T Yazı" },
+                  { value: "area",  label: "⬜ Alan" },
                 ] as const
               ).map(({ value, label }) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => setType(value)}
-                  className={`py-2 rounded-lg text-sm font-medium border transition-colors ${
+                  className={`py-2 rounded-lg text-xs font-medium border transition-colors ${
                     type === value
                       ? "bg-primary text-primary-foreground border-primary"
                       : "border-border text-muted-foreground hover:text-foreground"
@@ -200,8 +257,8 @@ export function HotspotForm({
             </div>
           )}
 
-          {/* Link / Pin: target panorama */}
-          {(type === "link" || type === "pin") && (
+          {/* Link / Pin / Floor: target panorama */}
+          {(type === "link" || type === "pin" || type === "floor") && (
             <div className="space-y-1.5">
               <Label>Hedef Panorama</Label>
               <select
@@ -221,8 +278,8 @@ export function HotspotForm({
             </div>
           )}
 
-          {/* Info / Link / Pin: title */}
-          {type !== "text" && (
+          {/* Info / Link / Pin / Floor: title */}
+          {type !== "text" && type !== "area" && (
             <div className="space-y-1.5">
               <Label>
                 {type === "info" ? "Başlık" : "Etiket (opsiyonel)"}
@@ -231,7 +288,11 @@ export function HotspotForm({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={
-                  type === "info" ? "Hotspot başlığı…" : "Pin etiketi…"
+                  type === "info"
+                    ? "Hotspot başlığı…"
+                    : type === "floor"
+                    ? "Zemin etiketi (opsiyonel)…"
+                    : "Pin etiketi…"
                 }
                 maxLength={100}
               />
@@ -381,6 +442,88 @@ export function HotspotForm({
                     <option value="fade">Solma</option>
                     <option value="glow">Parıldama ✨</option>
                     <option value="float">Yüzme 〰</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Area settings panel */}
+          {type === "area" && (
+            <div className="space-y-4">
+              {/* Status */}
+              <div className="space-y-1.5">
+                <Label>Durum</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { value: "satilik",   label: "Satılık",   active: "bg-emerald-600 border-emerald-600 text-white" },
+                      { value: "kiralik",   label: "Kiralık",   active: "bg-sky-600 border-sky-600 text-white" },
+                      { value: "opsiyonda", label: "Opsiyonda", active: "bg-amber-500 border-amber-500 text-white" },
+                    ] as const
+                  ).map(({ value, label, active }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setAreaStatus(value)}
+                      className={`py-2 rounded-lg text-sm font-semibold border transition-all ${
+                        areaStatus === value
+                          ? active
+                          : "border-border text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Label */}
+              <div className="space-y-1.5">
+                <Label>Etiket</Label>
+                <Input
+                  value={areaLabel}
+                  onChange={(e) => setAreaLabel(e.target.value)}
+                  placeholder="Örn: 1.250 m²  •  €450.000"
+                  maxLength={60}
+                />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1.5">
+                <Label>Açıklama (opsiyonel)</Label>
+                <Textarea
+                  value={areaDescription}
+                  onChange={(e) => setAreaDescription(e.target.value)}
+                  placeholder="Ek detaylar, iletişim bilgisi…"
+                  rows={2}
+                  maxLength={200}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Boyut</Label>
+                  <select
+                    value={areaSize}
+                    onChange={(e) => setAreaSize(e.target.value as typeof areaSize)}
+                    className={selectCls}
+                  >
+                    <option value="sm">Küçük</option>
+                    <option value="md">Orta</option>
+                    <option value="lg">Büyük</option>
+                    <option value="xl">X-Büyük</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Animasyon</Label>
+                  <select
+                    value={areaAnimation}
+                    onChange={(e) => setAreaAnimation(e.target.value as typeof areaAnimation)}
+                    className={selectCls}
+                  >
+                    <option value="pulse">Nabız 💓</option>
+                    <option value="none">Yok</option>
                   </select>
                 </div>
               </div>
