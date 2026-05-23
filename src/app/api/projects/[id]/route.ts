@@ -2,6 +2,7 @@ import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { projectSchema } from "@/lib/validation/project";
 
 const updateSchema = projectSchema.partial().extend({
@@ -79,7 +80,7 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { error } = await supabase
     .from("projects")
     .update({ deleted_at: new Date().toISOString() })
