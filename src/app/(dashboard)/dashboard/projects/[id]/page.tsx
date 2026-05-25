@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ImageIcon, Network, BarChart2, Share2, Eye } from "lucide-react";
+import { ImageIcon, Network, BarChart2, Share2, Eye, Users } from "lucide-react";
 import { getProfile } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { resolveUrls } from "@/lib/r2/urls";
@@ -16,6 +16,7 @@ import { HotspotEditorClient } from "@/components/viewer/hotspot-editor-client";
 import type { ViewerPanorama } from "@/components/viewer/panorama-viewer";
 import { SharePanel } from "@/components/projects/share-panel";
 import { ProjectAnalytics } from "@/components/analytics/project-analytics";
+import { ProjectMembersManager } from "@/components/projects/project-members-manager";
 import { cn } from "@/lib/utils";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -276,6 +277,12 @@ export default async function ProjectDetailPage({
             <Share2 className="size-3.5" />
             Paylaşım
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="members" className="rounded-none px-4 pb-3 pt-1">
+              <Users className="size-3.5" />
+              Üyeler
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="panoramas" className="mt-6">
@@ -297,6 +304,20 @@ export default async function ProjectDetailPage({
         <TabsContent value="share" className="mt-6">
           <SharePanel projectId={id} />
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="members" className="mt-6">
+            <div className="max-w-2xl">
+              <div className="mb-4">
+                <h2 className="font-medium">Proje Üyeleri</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Kullanıcıları projeye atayın. Editörler panorama ve hotspot ekleyebilir.
+                </p>
+              </div>
+              <ProjectMembersManager projectId={id} allUsers={users} />
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

@@ -14,18 +14,22 @@ export default async function ProjectsPage() {
 
   const isAdmin = profile.role === "admin";
 
-  const query = supabase
+  // RLS handles filtering: admins see all, clients see own + assigned projects
+  const { data: projects } = await supabase
     .from("projects")
-    .select(`
-      id, title, type, status, location, cover_url, updated_at,
-      panoramas(count)
-    `)
+    .select(`id, title, type, status, location, cover_url, owner_id, updated_at, panoramas(count)`)
     .is("deleted_at", null)
     .order("updated_at", { ascending: false });
 
-  if (!isAdmin) query.eq("owner_id", profile.id);
-
-  const { data: projects } = await query;
+  // For non-admin: identify assigned projects (not owned) to show a badge
+  let assignedProjectIds = new Set<string>();
+  if (!isAdmin && projects?.length) {
+    const { data: memberships } = await supabase
+      .from("project_members")
+      .select("project_id")
+      .eq("user_id", profile.id);
+    assignedProjectIds = new Set((memberships ?? []).map((m) => m.project_id));
+  }
 
   return (
     <div className="max-w-6xl space-y-6">
@@ -36,12 +40,10 @@ export default async function ProjectsPage() {
             {projects?.length ?? 0} proje
           </p>
         </div>
-        {isAdmin && (
-          <Link href="/dashboard/projects/new" className={buttonVariants()}>
-            <Plus className="mr-2 size-4" strokeWidth={2} />
-            Yeni Proje
-          </Link>
-        )}
+        <Link href="/dashboard/projects/new" className={buttonVariants()}>
+          <Plus className="mr-2 size-4" strokeWidth={2} />
+          Yeni Proje
+        </Link>
       </div>
 
       {!projects?.length ? (
@@ -53,11 +55,9 @@ export default async function ProjectsPage() {
           <p className="text-muted-foreground text-sm max-w-xs mb-6">
             İlk 360° projenizi oluşturun ve müşterilerinizle paylaşmaya başlayın.
           </p>
-          {isAdmin && (
-            <Link href="/dashboard/projects/new" className={buttonVariants()}>
-              Yeni Proje Oluştur
-            </Link>
-          )}
+          <Link href="/dashboard/projects/new" className={buttonVariants()}>
+            Yeni Proje Oluştur
+          </Link>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -72,6 +72,7 @@ export default async function ProjectsPage() {
               coverUrl={p.cover_url}
               updatedAt={p.updated_at}
               panoramaCount={(p.panoramas as unknown as { count: number }[])?.[0]?.count ?? 0}
+              isAssigned={assignedProjectIds.has(p.id)}
             />
           ))}
         </div>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Clock, ImageIcon } from "lucide-react";
+import { MapPin, Clock, ImageIcon, UserCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +25,7 @@ interface ProjectCardProps {
   coverUrl: string | null;
   updatedAt: string;
   panoramaCount?: number;
+  isAssigned?: boolean;
 }
 
 export function ProjectCard({
@@ -36,6 +37,7 @@ export function ProjectCard({
   coverUrl,
   updatedAt,
   panoramaCount = 0,
+  isAssigned = false,
 }: ProjectCardProps) {
   const statusStyle = statusConfig[status] ?? statusConfig.draft;
 
@@ -82,6 +84,12 @@ export function ProjectCard({
           </Badge>
           {panoramaCount > 0 && (
             <span>{panoramaCount} panorama</span>
+          )}
+          {isAssigned && (
+            <span className="flex items-center gap-1 text-sky-400 ml-auto">
+              <UserCheck className="size-3" />
+              Atandı
+            </span>
           )}
         </div>
 

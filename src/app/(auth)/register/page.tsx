@@ -1,14 +1,13 @@
 import { Compass } from "lucide-react";
-import { LoginForm } from "@/components/auth/login-form";
+import { RegisterForm } from "@/components/auth/register-form";
 
 export const metadata = {
-  title: "Giriş Yap — drone360",
+  title: "Kayıt Ol — drone360",
 };
 
-export default function LoginPage() {
+export default function RegisterPage() {
   return (
     <div className="w-full max-w-md space-y-8">
-      {/* Logo */}
       <div className="flex flex-col items-center gap-2 text-center">
         <div className="flex items-center gap-2 text-primary">
           <Compass className="size-7" strokeWidth={1.5} />
@@ -17,22 +16,15 @@ export default function LoginPage() {
           </span>
         </div>
         <h1 className="font-display text-3xl text-foreground">
-          Hoş geldiniz
+          Hesap Oluşturun
         </h1>
         <p className="text-sm text-muted-foreground">
-          Devam etmek için giriş yapın.
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Hesabınız yok mu?{" "}
-          <a href="/register" className="text-foreground hover:underline transition-colors">
-            Kayıt olun
-          </a>
+          Ücretsiz hesabınızı oluşturun ve 360° turlarınızı yönetin.
         </p>
       </div>
 
-      {/* Form card */}
       <div className="rounded-xl border border-border bg-surface p-6 sm:p-8">
-        <LoginForm />
+        <RegisterForm />
       </div>
     </div>
   );

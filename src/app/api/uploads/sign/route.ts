@@ -2,7 +2,7 @@ import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { requireAdmin } from "@/lib/auth/permissions";
+import { requireAuth } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { r2, R2_BUCKET } from "@/lib/r2/client";
 
@@ -18,7 +18,7 @@ const signSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAuth();
   } catch {
     return NextResponse.json({ error: { message: "Yetkisiz erişim." } }, { status: 401 });
   }

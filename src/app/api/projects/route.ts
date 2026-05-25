@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/permissions";
+import { requireAuth } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { projectSchema } from "@/lib/validation/project";
 
 export async function POST(request: NextRequest) {
+  let profile;
   try {
-    await requireAdmin();
+    profile = await requireAuth();
   } catch {
     return NextResponse.json(
       { error: { message: "Yetkisiz erişim." } },
@@ -24,6 +25,10 @@ export async function POST(request: NextRequest) {
   }
 
   const { title, description, type, location, ownerId } = parsed.data;
+  const isAdmin = profile.role === "admin";
+
+  // Non-admin users can only create projects for themselves
+  const resolvedOwnerId = isAdmin ? (ownerId ?? profile.id) : profile.id;
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -33,7 +38,7 @@ export async function POST(request: NextRequest) {
       description: description ?? null,
       type,
       location: location ?? null,
-      owner_id: ownerId,
+      owner_id: resolvedOwnerId,
       status: "draft",
     })
     .select("id")

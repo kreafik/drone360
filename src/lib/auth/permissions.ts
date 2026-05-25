@@ -27,6 +27,12 @@ export async function getUser() {
   return user;
 }
 
+export async function requireAuth() {
+  const profile = await getProfile();
+  if (!profile) throw new Error("Bu işlem için giriş yapmanız gereklidir.");
+  return profile;
+}
+
 export async function requireAdmin() {
   const profile = await getProfile();
   if (profile?.role !== "admin") {

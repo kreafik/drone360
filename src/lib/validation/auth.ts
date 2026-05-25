@@ -12,3 +12,12 @@ export const forgotPasswordSchema = z.object({
 });
 
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
+
+export const registerSchema = z.object({
+  email: z.string().email("Geçerli bir e-posta adresi giriniz."),
+  password: z.string().min(8, "Şifre en az 8 karakter olmalıdır."),
+  fullName: z.string().min(2, "Ad soyad en az 2 karakter olmalıdır.").max(100),
+  companyName: z.string().max(100).optional(),
+});
+
+export type RegisterFormData = z.infer<typeof registerSchema>;

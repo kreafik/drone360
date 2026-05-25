@@ -27,6 +27,7 @@ interface User {
 
 interface ProjectFormProps {
   users: User[];
+  isAdmin?: boolean;
   defaultValues?: Partial<ProjectFormData>;
   projectId?: string;
   onSuccess?: () => void;
@@ -40,6 +41,7 @@ const TYPE_ITEMS = [
 
 export function ProjectForm({
   users,
+  isAdmin = false,
   defaultValues,
   projectId,
   onSuccess,
@@ -165,32 +167,34 @@ export function ProjectForm({
         />
       </div>
 
-      <div className="space-y-1.5">
-        <Label>
-          Proje Sahibi <span className="text-danger">*</span>
-        </Label>
-        <Select
-          items={ownerItems}
-          defaultValue={defaultValues?.ownerId}
-          onValueChange={(v) =>
-            v && setValue("ownerId", v, { shouldValidate: true })
-          }
-        >
-          <SelectTrigger aria-invalid={!!errors.ownerId} className="w-full">
-            <SelectValue placeholder="Müşteri seçin" />
-          </SelectTrigger>
-          <SelectContent>
-            {users.map((u) => (
-              <SelectItem key={u.id} value={u.id}>
-                {u.full_name ? `${u.full_name} — ${u.email}` : u.email}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {errors.ownerId && (
-          <p className="text-sm text-danger">{errors.ownerId.message}</p>
-        )}
-      </div>
+      {isAdmin && (
+        <div className="space-y-1.5">
+          <Label>
+            Proje Sahibi <span className="text-danger">*</span>
+          </Label>
+          <Select
+            items={ownerItems}
+            defaultValue={defaultValues?.ownerId}
+            onValueChange={(v) =>
+              v && setValue("ownerId", v, { shouldValidate: true })
+            }
+          >
+            <SelectTrigger aria-invalid={!!errors.ownerId} className="w-full">
+              <SelectValue placeholder="Müşteri seçin" />
+            </SelectTrigger>
+            <SelectContent>
+              {users.map((u) => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.full_name ? `${u.full_name} — ${u.email}` : u.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.ownerId && (
+            <p className="text-sm text-danger">{errors.ownerId.message}</p>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end pt-2">
         <Button

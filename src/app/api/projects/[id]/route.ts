@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/permissions";
+import { requireAdmin, requireAuth } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { projectSchema } from "@/lib/validation/project";
@@ -13,8 +13,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let profile;
   try {
-    await requireAdmin();
+    profile = await requireAuth();
   } catch {
     return NextResponse.json(
       { error: { message: "Yetkisiz erişim." } },
@@ -33,7 +34,9 @@ export async function PATCH(
     );
   }
 
+  const isAdmin = profile.role === "admin";
   const { title, description, type, location, ownerId, status } = parsed.data;
+
   const update: {
     title?: string;
     description?: string | null;
@@ -46,8 +49,9 @@ export async function PATCH(
   if (description !== undefined) update.description = description;
   if (type !== undefined) update.type = type;
   if (location !== undefined) update.location = location;
-  if (ownerId !== undefined) update.owner_id = ownerId;
-  if (status !== undefined) update.status = status;
+  // Only admin can reassign owner or change status
+  if (isAdmin && ownerId !== undefined) update.owner_id = ownerId;
+  if (isAdmin && status !== undefined) update.status = status;
 
   const supabase = await createClient();
   const { error } = await supabase

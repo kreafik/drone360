@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/permissions";
+import { requireAuth } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 
 const reorderSchema = z.object({
@@ -12,7 +12,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    await requireAuth();
   } catch {
     return NextResponse.json({ error: { message: "Yetkisiz erişim." } }, { status: 401 });
   }

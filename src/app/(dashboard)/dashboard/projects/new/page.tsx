@@ -1,24 +1,22 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { requireAdmin } from "@/lib/auth/permissions";
+import { redirect } from "next/navigation";
+import { getProfile } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { ProjectForm } from "@/components/projects/project-form";
 
 export const metadata = { title: "Yeni Proje — drone360" };
 
 export default async function NewProjectPage() {
-  try {
-    await requireAdmin();
-  } catch {
-    redirect("/dashboard");
-  }
+  const profile = await getProfile();
+  if (!profile) redirect("/login");
+
+  const isAdmin = profile.role === "admin";
 
   const supabase = await createClient();
-  const { data: users } = await supabase
-    .from("profiles")
-    .select("id, email, full_name")
-    .order("full_name");
+  const users = isAdmin
+    ? (await supabase.from("profiles").select("id, email, full_name").order("full_name")).data ?? []
+    : [];
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -37,7 +35,7 @@ export default async function NewProjectPage() {
       </div>
 
       <div className="rounded-xl border border-border bg-surface p-6">
-        <ProjectForm users={users ?? []} />
+        <ProjectForm users={users} isAdmin={isAdmin} />
       </div>
     </div>
   );

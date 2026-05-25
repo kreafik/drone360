@@ -5,7 +5,7 @@ export const projectSchema = z.object({
   description: z.string().max(500).optional(),
   type: z.enum(["real_estate", "boat", "other"] as const),
   location: z.string().max(200).optional(),
-  ownerId: z.string().uuid("Geçerli bir kullanıcı seçiniz."),
+  ownerId: z.string().uuid("Geçerli bir kullanıcı seçiniz.").optional(),
 });
 
 export type ProjectFormData = z.infer<typeof projectSchema>;
