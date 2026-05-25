@@ -228,6 +228,7 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
   );
   const activeIdRef = useRef(activeId);
   const preloadStartedRef = useRef(false);
+  const preloadAbortRef = useRef<AbortController | null>(null);
   const [infoCard, setInfoCard] = useState<{ title: string; description?: string | null } | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -304,6 +305,10 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (vt as any).setCurrentNode = (nodeId: string, ...args: unknown[]) => {
         if (initializedRef.current) setIsTransitioning(true);
+        // Abort any in-flight background preload so its large fetch doesn't compete
+        // with PSV's own fetch for the panorama the user just navigated to.
+        preloadAbortRef.current?.abort();
+        preloadAbortRef.current = null;
         return origSetCurrentNode(nodeId, ...args);
       };
 
@@ -322,25 +327,25 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
         callbacksRef.current.onPanoramaChange?.(newId);
 
         // After the first panorama loads, silently preload remaining panoramas
-        // one by one so subsequent navigation feels instant.
+        // one by one using fetch() — same infrastructure as Three.js FileLoader,
+        // so the HTTP cache entry is shared and PSV finds the image instantly.
+        // The AbortController lets setCurrentNode cancel an in-flight preload
+        // so its large download doesn't compete with PSV's own navigation fetch.
         if (!preloadStartedRef.current && panoramasRef.current.length > 1) {
           preloadStartedRef.current = true;
           const otherUrls = panoramasRef.current
             .filter((p) => p.id !== newId)
             .map((p) => p.panoramaUrl);
+          const controller = new AbortController();
+          preloadAbortRef.current = controller;
           (async () => {
             for (const url of otherUrls) {
-              await new Promise<void>((resolve) => {
-                const img = new window.Image();
-                // Must match the CORS mode PSV's FileLoader uses (XHR with credentials omitted).
-                // Without this, the browser caches an opaque response and the subsequent
-                // XHR fetch hits a CORS error when it reads the cached entry.
-                img.crossOrigin = "anonymous";
-                img.onload = () => resolve();
-                img.onerror = () => resolve();
-                img.src = url;
-              });
+              if (controller.signal.aborted) break;
+              await fetch(url, { mode: "cors", signal: controller.signal })
+                .then((r) => r.blob())
+                .catch(() => {});
             }
+            preloadAbortRef.current = null;
           })();
         }
 
@@ -412,6 +417,8 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
 
     return () => {
       clearTimeout(timerId);
+      preloadAbortRef.current?.abort();
+      preloadAbortRef.current = null;
       if (viewer) {
         initializedRef.current = false;
         viewer.destroy();
