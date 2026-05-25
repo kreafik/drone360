@@ -13,6 +13,7 @@ const patchSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, "Geçerli bir HEX renk giriniz (#rrggbb)")
     .nullable()
     .optional(),
+  status: z.enum(["pending", "active"]).optional(),
 });
 
 export async function PATCH(
@@ -36,7 +37,7 @@ export async function PATCH(
     );
   }
 
-  const { fullName, companyName, brandName, brandLogoUrl, brandPrimaryColor } =
+  const { fullName, companyName, brandName, brandLogoUrl, brandPrimaryColor, status } =
     parsed.data;
 
   const supabase = await createClient();
@@ -48,6 +49,7 @@ export async function PATCH(
       ...(brandName !== undefined && { brand_name: brandName }),
       ...(brandLogoUrl !== undefined && { brand_logo_url: brandLogoUrl }),
       ...(brandPrimaryColor !== undefined && { brand_primary_color: brandPrimaryColor }),
+      ...(status !== undefined && { status }),
     })
     .eq("id", id);
 
