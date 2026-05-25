@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { CloudUpload, X, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { CloudUpload, X, CheckCircle2, AlertCircle, Loader2, Zap } from "lucide-react";
 import { toast } from "sonner";
+import imageCompression from "browser-image-compression";
 import { cn } from "@/lib/utils";
 
 const MAX_SIZE = 50 * 1024 * 1024;
@@ -11,9 +12,10 @@ const ALLOWED_TYPES = ["image/jpeg", "image/webp"];
 interface FileUploadState {
   file: File;
   id: string;
-  status: "pending" | "uploading" | "done" | "error";
+  status: "pending" | "compressing" | "uploading" | "done" | "error";
   progress: number;
   error?: string;
+  compressedSize?: number;
 }
 
 interface UploadDropzoneProps {
@@ -54,17 +56,45 @@ export function UploadDropzone({ projectId, onAllDone }: UploadDropzoneProps) {
   }
 
   async function uploadSingle(state: FileUploadState): Promise<boolean> {
-    updateUpload(state.id, { status: "uploading", progress: 5 });
+    // Step 1: Compress client-side (Web Worker — doesn't block UI)
+    updateUpload(state.id, { status: "compressing", progress: 0 });
 
-    // 1. Get presigned URL
+    let fileToUpload: File = state.file;
+    try {
+      const compressed = await imageCompression(state.file, {
+        maxSizeMB: 15,
+        initialQuality: 0.85,
+        // Prevent any resizing — panoramas need full resolution.
+        // browser-image-compression defaults to 1920 if omitted, which would destroy quality.
+        maxWidthOrHeight: 16384,
+        useWebWorker: true,
+        fileType: "image/jpeg",
+        onProgress: (p: number) => {
+          updateUpload(state.id, { progress: Math.round(p * 0.28) });
+        },
+      });
+
+      if (compressed.size < state.file.size) {
+        // Rename extension to .jpg since we forced JPEG output
+        const baseName = state.file.name.replace(/\.[^.]+$/, "");
+        fileToUpload = new File([compressed], `${baseName}.jpg`, { type: "image/jpeg" });
+        updateUpload(state.id, { compressedSize: fileToUpload.size });
+      }
+    } catch {
+      // Compression failed — proceed with original file
+    }
+
+    // Step 2: Get presigned URL (use compressed file's type + size — R2 binds ContentLength)
+    updateUpload(state.id, { status: "uploading", progress: 30 });
+
     const signRes = await fetch("/api/uploads/sign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         projectId,
-        fileName: state.file.name,
-        fileType: state.file.type,
-        fileSize: state.file.size,
+        fileName: fileToUpload.name,
+        fileType: fileToUpload.type,
+        fileSize: fileToUpload.size,
       }),
     });
 
@@ -75,22 +105,22 @@ export function UploadDropzone({ projectId, onAllDone }: UploadDropzoneProps) {
     }
 
     const { panoramaId, uploadUrl } = await signRes.json();
-    updateUpload(state.id, { progress: 10 });
+    updateUpload(state.id, { progress: 33 });
 
-    // 2. XHR PUT to R2 for progress tracking
+    // Step 3: XHR PUT to R2 for progress tracking
     const xhrOk = await new Promise<boolean>((resolve) => {
       const xhr = new XMLHttpRequest();
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
-          const pct = 10 + Math.round((e.loaded / e.total) * 80);
+          const pct = 33 + Math.round((e.loaded / e.total) * 57);
           updateUpload(state.id, { progress: pct });
         }
       };
       xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
       xhr.onerror = () => resolve(false);
       xhr.open("PUT", uploadUrl);
-      xhr.setRequestHeader("Content-Type", state.file.type);
-      xhr.send(state.file);
+      xhr.setRequestHeader("Content-Type", fileToUpload.type);
+      xhr.send(fileToUpload);
     });
 
     if (!xhrOk) {
@@ -100,7 +130,7 @@ export function UploadDropzone({ projectId, onAllDone }: UploadDropzoneProps) {
 
     updateUpload(state.id, { progress: 92 });
 
-    // 3. Complete (thumbnail generation)
+    // Step 4: Complete (thumbnail generation)
     const completeRes = await fetch("/api/uploads/complete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -123,8 +153,7 @@ export function UploadDropzone({ projectId, onAllDone }: UploadDropzoneProps) {
 
     const pending = uploads.filter((u) => u.status === "pending");
 
-    // Sequential uploads — parallel requests would race on the DB position counter
-    // causing unique constraint violations when multiple files are uploaded at once.
+    // Sequential — parallel requests race on the DB position counter
     let successCount = 0;
     for (const u of pending) {
       const ok = await uploadSingle(u);
@@ -155,7 +184,9 @@ export function UploadDropzone({ projectId, onAllDone }: UploadDropzoneProps) {
 
   const allDone =
     uploads.length > 0 && uploads.every((u) => u.status === "done" || u.status === "error");
-  const isUploading = uploads.some((u) => u.status === "uploading");
+  const isUploading = uploads.some(
+    (u) => u.status === "compressing" || u.status === "uploading"
+  );
 
   return (
     <div className="space-y-4">
@@ -198,15 +229,10 @@ export function UploadDropzone({ projectId, onAllDone }: UploadDropzoneProps) {
             >
               {/* Status icon */}
               <span className="shrink-0">
-                {u.status === "done" && (
-                  <CheckCircle2 className="size-4 text-success" />
-                )}
-                {u.status === "error" && (
-                  <AlertCircle className="size-4 text-danger" />
-                )}
-                {(u.status === "uploading") && (
-                  <Loader2 className="size-4 animate-spin text-primary" />
-                )}
+                {u.status === "done" && <CheckCircle2 className="size-4 text-success" />}
+                {u.status === "error" && <AlertCircle className="size-4 text-danger" />}
+                {u.status === "compressing" && <Zap className="size-4 text-amber-400 animate-pulse" />}
+                {u.status === "uploading" && <Loader2 className="size-4 animate-spin text-primary" />}
                 {u.status === "pending" && (
                   <span className="size-4 rounded-full border border-border inline-block" />
                 )}
@@ -215,19 +241,33 @@ export function UploadDropzone({ projectId, onAllDone }: UploadDropzoneProps) {
               {/* File info */}
               <div className="flex-1 min-w-0">
                 <p className="truncate font-medium">{u.file.name}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-muted-foreground">
-                    {formatSize(u.file.size)}
-                  </span>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {u.compressedSize != null ? (
+                    <span className="text-xs text-muted-foreground">
+                      {formatSize(u.file.size)}
+                      <span className="mx-1 text-success">→</span>
+                      <span className="text-success font-medium">{formatSize(u.compressedSize)}</span>
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">{formatSize(u.file.size)}</span>
+                  )}
+                  {u.status === "compressing" && (
+                    <span className="text-xs text-amber-400">Sıkıştırılıyor…</span>
+                  )}
                   {u.status === "error" && u.error && (
                     <span className="text-xs text-danger">{u.error}</span>
                   )}
                 </div>
-                {u.status === "uploading" && (
+                {(u.status === "compressing" || u.status === "uploading") && (
                   <div className="mt-1.5 h-1 rounded-full bg-surface-elevated overflow-hidden">
                     <div
-                      className="h-full bg-primary rounded-full transition-all duration-300"
-                      style={{ width: `${u.progress}%` }}
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${u.progress}%`,
+                        background: u.status === "compressing"
+                          ? "oklch(0.78 0.16 70)"
+                          : "var(--color-primary)",
+                      }}
                     />
                   </div>
                 )}
@@ -270,7 +310,7 @@ export function UploadDropzone({ projectId, onAllDone }: UploadDropzoneProps) {
             )}
           >
             {isUploading && <Loader2 className="size-3.5 animate-spin" />}
-            {isUploading ? "Yükleniyor…" : "Yüklemeyi Başlat"}
+            {isUploading ? "İşleniyor…" : "Yüklemeyi Başlat"}
           </button>
         </div>
       )}
