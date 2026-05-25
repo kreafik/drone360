@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { UserEditModal } from "@/components/users/user-edit-modal";
 import { UserApproveButton } from "@/components/users/user-approve-button";
+import { UserDeleteButton } from "@/components/users/user-delete-button";
 
 export const metadata = { title: "Kullanıcılar — drone360" };
 
@@ -137,7 +138,7 @@ export default async function UsersPage() {
                       {new Date(user.created_at).toLocaleDateString("tr-TR")}
                     </td>
                     <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-2 justify-end">
+                      <div className="flex items-center gap-1 justify-end">
                         {isPending ? (
                           <UserApproveButton userId={user.id} />
                         ) : (
@@ -152,6 +153,10 @@ export default async function UsersPage() {
                             }}
                           />
                         )}
+                        <UserDeleteButton
+                          userId={user.id}
+                          userName={user.full_name ?? user.email}
+                        />
                       </div>
                     </td>
                   </tr>

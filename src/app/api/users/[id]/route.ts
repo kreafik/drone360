@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const patchSchema = z.object({
   fullName: z.string().min(1).max(100).optional(),
@@ -52,6 +53,36 @@ export async function PATCH(
       ...(status !== undefined && { status }),
     })
     .eq("id", id);
+
+  if (error) {
+    return NextResponse.json({ error: { message: error.message } }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  let adminProfile;
+  try {
+    adminProfile = await requireAdmin();
+  } catch {
+    return NextResponse.json({ error: { message: "Yetkisiz." } }, { status: 403 });
+  }
+
+  const { id } = await params;
+
+  if (id === adminProfile.id) {
+    return NextResponse.json(
+      { error: { message: "Kendi hesabınızı silemezsiniz." } },
+      { status: 400 }
+    );
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.deleteUser(id);
 
   if (error) {
     return NextResponse.json({ error: { message: error.message } }, { status: 500 });
