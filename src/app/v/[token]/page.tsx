@@ -67,11 +67,8 @@ export default async function PublicViewerPage({
     }
   }
 
-  // Increment view count
-  await supabase
-    .from("shares")
-    .update({ view_count: supabase.rpc("increment_view_count" as never) as never })
-    .eq("id", share.id);
+  // Increment view count atomically via DB function (UPDATE … SET view_count = view_count + 1)
+  await supabase.rpc("increment_share_view_count", { share_id: share.id });
 
   // Fetch project + panoramas + hotspots
   const projectId = share.project_id;
