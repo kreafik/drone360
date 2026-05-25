@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DndContext,
   closestCenter,
@@ -40,6 +40,10 @@ export function PanoramaList({ projectId, initialPanoramas, initialCoverPanorama
   const [panoramas, setPanoramas] = useState(initialPanoramas);
   const [coverPanoramaId, setCoverPanoramaId] = useState<string | null>(initialCoverPanoramaId ?? null);
   const [overviewPanoramaId, setOverviewPanoramaId] = useState<string | null>(initialOverviewPanoramaId ?? null);
+
+  // Sync state when server component re-fetches data (e.g. after router.refresh()).
+  // useState only uses the initial value on mount; this effect keeps it in sync.
+  useEffect(() => { setPanoramas(initialPanoramas); }, [initialPanoramas]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
