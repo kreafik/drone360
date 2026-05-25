@@ -291,7 +291,7 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
             },
           ],
           GyroscopePlugin,
-          ...(autorotate ? [[AutorotatePlugin, { autostartDelay: 2000 }] as never] : []),
+          ...(autorotate ? [[AutorotatePlugin, { autostartDelay: 2000, autostartOnIdle: false }] as never] : []),
         ],
       });
 
