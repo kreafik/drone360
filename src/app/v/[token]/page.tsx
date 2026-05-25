@@ -68,7 +68,8 @@ export default async function PublicViewerPage({
   }
 
   // Increment view count atomically via DB function (UPDATE … SET view_count = view_count + 1)
-  await supabase.rpc("increment_share_view_count", { share_id: share.id });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase.rpc as any)("increment_share_view_count", { share_id: share.id });
 
   // Fetch project + panoramas + hotspots
   const projectId = share.project_id;
