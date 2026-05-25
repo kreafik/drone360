@@ -65,6 +65,10 @@ export function HotspotForm({
   const [textAnimation, setTextAnimation] = useState<TextHotspotMetadata["animation"]>(
     editingMeta.animation ?? "glow"
   );
+  const [textStrokeColor, setTextStrokeColor] = useState(editingMeta.strokeColor ?? "#000000");
+  const [textStrokeWidth, setTextStrokeWidth] = useState<TextHotspotMetadata["strokeWidth"]>(
+    editingMeta.strokeWidth ?? 0
+  );
 
   const editingAreaMeta =
     editing?.type === "area"
@@ -103,6 +107,8 @@ export function HotspotForm({
           bgOpacity: textBgOpacity,
           borderRadius: textBorderRadius,
           animation: textAnimation,
+          strokeColor: textStrokeColor,
+          strokeWidth: textStrokeWidth,
         };
 
         const res = isEditing
@@ -391,6 +397,41 @@ export function HotspotForm({
                       {textBgColor}
                     </span>
                   </div>
+                </div>
+              </div>
+
+              {/* Stroke / outline */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Kontur Rengi</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={textStrokeColor}
+                      onChange={(e) => setTextStrokeColor(e.target.value)}
+                      className="w-9 h-9 rounded-md border border-border cursor-pointer bg-transparent p-0.5 shrink-0"
+                    />
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {textStrokeColor}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Kontur Kalınlığı</Label>
+                  <select
+                    value={textStrokeWidth}
+                    onChange={(e) =>
+                      setTextStrokeWidth(Number(e.target.value) as TextHotspotMetadata["strokeWidth"])
+                    }
+                    className={selectCls}
+                  >
+                    <option value={0}>Yok</option>
+                    <option value={1}>İnce (1px)</option>
+                    <option value={2}>Orta (2px)</option>
+                    <option value={3}>Kalın (3px)</option>
+                    <option value={4}>Çok Kalın (4px)</option>
+                    <option value={5}>Maksimum (5px)</option>
+                  </select>
                 </div>
               </div>
 

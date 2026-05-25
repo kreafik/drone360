@@ -59,4 +59,6 @@ export interface TextHotspotMetadata {
   bgOpacity: number;
   borderRadius: "none" | "sm" | "md" | "lg";
   animation: "none" | "fade" | "glow" | "float";
+  strokeColor?: string;
+  strokeWidth?: 0 | 1 | 2 | 3 | 4 | 5;
 }

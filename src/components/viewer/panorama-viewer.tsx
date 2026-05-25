@@ -80,7 +80,13 @@ function buildTextMarkerHtml(h: ViewerHotspot): string {
   const g = parseInt(bgHex.slice(3, 5), 16) || 0;
   const b = parseInt(bgHex.slice(5, 7), 16) || 0;
 
-  return `<div class="d360-text-marker${animClass}" style="font-size:${fs}px;font-weight:${fw};color:${color};background:rgba(${r},${g},${b},${bgOpacity});border-radius:${radius}px;">${content}</div>`;
+  const strokeWidth = meta.strokeWidth ?? 0;
+  const strokeColor = meta.strokeColor ?? "#000000";
+  const strokeStyle = strokeWidth > 0
+    ? `-webkit-text-stroke:${strokeWidth}px ${strokeColor};paint-order:stroke fill;`
+    : "";
+
+  return `<div class="d360-text-marker${animClass}" style="font-size:${fs}px;font-weight:${fw};color:${color};background:rgba(${r},${g},${b},${bgOpacity});border-radius:${radius}px;${strokeStyle}">${content}</div>`;
 }
 
 const AREA_STATUS_LABELS: Record<string, string> = {
@@ -220,6 +226,7 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
   const [activeId, setActiveId] = useState<string>(
     panoramas.find((p) => p.id === initialId)?.id ?? panoramas[0]?.id ?? ""
   );
+  const activeIdRef = useRef(activeId);
   const [infoCard, setInfoCard] = useState<{ title: string; description?: string | null } | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -232,6 +239,11 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
   useEffect(() => {
     panoramasRef.current = panoramas;
   }, [panoramas]);
+
+  // Keep activeIdRef in sync so the setNodes effect always has the latest value
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
 
   // Init once on mount.
   // setTimeout is intentional: React StrictMode runs effect → cleanup → effect again.
@@ -298,11 +310,30 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vt.addEventListener("node-changed" as never, (e: any) => {
+        const prevId = activeIdRef.current;
+        const newId = e.node.id as string;
+
         initializedRef.current = true;
-        setActiveId(e.node.id);
+        activeIdRef.current = newId;
+        setActiveId(newId);
         setInfoCard(null);
         setIsTransitioning(false);
-        callbacksRef.current.onPanoramaChange?.(e.node.id);
+        callbacksRef.current.onPanoramaChange?.(newId);
+
+        // Apply saved default camera view when navigating to a different panorama.
+        // Skip when setNodes reloads the current node (newId === prevId) to avoid
+        // resetting the camera while the user is browsing.
+        if (newId !== prevId && viewer) {
+          const pano = panoramasRef.current.find((p) => p.id === newId);
+          if (pano && (pano.defaultYaw != null || pano.defaultPitch != null || pano.defaultZoom != null)) {
+            viewer.animate({
+              yaw: pano.defaultYaw ?? 0,
+              pitch: pano.defaultPitch ?? 0,
+              zoom: pano.defaultZoom ?? 50,
+              speed: "4rpm",
+            });
+          }
+        }
       });
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -369,10 +400,16 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
 
   // Sync nodes when panoramas prop changes (hotspots added/removed).
   // Guard with initializedRef so this never fires before the first node-changed.
+  // activeIdRef is used instead of vt.currentNode?.id to avoid a timing window
+  // where currentNode is transiently undefined, which would cause PSV to fall
+  // back to the first node and navigate away from the current panorama.
   useEffect(() => {
     const vt = vtRef.current;
     if (!vt || !initializedRef.current) return;
-    const currentId = (vt as unknown as { currentNode?: { id: string } }).currentNode?.id;
+    const currentId =
+      activeIdRef.current ||
+      (vt as unknown as { currentNode?: { id: string } }).currentNode?.id;
+    if (!currentId) return;
     vt.setNodes(buildNodes(panoramas) as never, currentId);
   }, [panoramas]);
 
