@@ -26,21 +26,30 @@ export function RegisterForm() {
 
   async function onSubmit(data: RegisterFormData) {
     setServerError(null);
-    const supabase = createClient();
 
-    const { error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        data: {
-          full_name: data.fullName,
-          company_name: data.companyName ?? null,
-        },
-      },
+    // Server-side registration bypasses email confirmation requirement
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
     });
 
-    if (error) {
-      setServerError(error.message);
+    if (!res.ok) {
+      const json = await res.json();
+      setServerError(json.error?.message ?? "Kayıt başarısız.");
+      return;
+    }
+
+    // Auto sign in after successful registration
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    });
+
+    if (signInError) {
+      setServerError("Hesap oluşturuldu. Lütfen giriş yapın.");
+      router.push("/login");
       return;
     }
 
@@ -91,7 +100,10 @@ export function RegisterForm() {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="companyName">Şirket Adı <span className="text-muted-foreground text-xs">(opsiyonel)</span></Label>
+        <Label htmlFor="companyName">
+          Şirket Adı{" "}
+          <span className="text-muted-foreground text-xs">(opsiyonel)</span>
+        </Label>
         <Input
           id="companyName"
           type="text"

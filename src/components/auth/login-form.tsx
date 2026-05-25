@@ -35,7 +35,11 @@ export function LoginForm() {
     });
 
     if (error) {
-      setServerError("E-posta veya şifre hatalı.");
+      if (error.message.toLowerCase().includes("email not confirmed")) {
+        setServerError("E-posta adresiniz onaylanmamış. Lütfen gelen kutunuzu kontrol edin.");
+      } else {
+        setServerError("E-posta veya şifre hatalı.");
+      }
       return;
     }
 
