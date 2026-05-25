@@ -332,6 +332,10 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
             for (const url of otherUrls) {
               await new Promise<void>((resolve) => {
                 const img = new window.Image();
+                // Must match the CORS mode PSV's FileLoader uses (XHR with credentials omitted).
+                // Without this, the browser caches an opaque response and the subsequent
+                // XHR fetch hits a CORS error when it reads the cached entry.
+                img.crossOrigin = "anonymous";
                 img.onload = () => resolve();
                 img.onerror = () => resolve();
                 img.src = url;
