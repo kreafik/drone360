@@ -227,6 +227,7 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
     panoramas.find((p) => p.id === initialId)?.id ?? panoramas[0]?.id ?? ""
   );
   const activeIdRef = useRef(activeId);
+  const preloadStartedRef = useRef(false);
   const [infoCard, setInfoCard] = useState<{ title: string; description?: string | null } | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -319,6 +320,25 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
         setInfoCard(null);
         setIsTransitioning(false);
         callbacksRef.current.onPanoramaChange?.(newId);
+
+        // After the first panorama loads, silently preload remaining panoramas
+        // one by one so subsequent navigation feels instant.
+        if (!preloadStartedRef.current && panoramasRef.current.length > 1) {
+          preloadStartedRef.current = true;
+          const otherUrls = panoramasRef.current
+            .filter((p) => p.id !== newId)
+            .map((p) => p.panoramaUrl);
+          (async () => {
+            for (const url of otherUrls) {
+              await new Promise<void>((resolve) => {
+                const img = new window.Image();
+                img.onload = () => resolve();
+                img.onerror = () => resolve();
+                img.src = url;
+              });
+            }
+          })();
+        }
 
         // Apply saved default camera view when navigating to a different panorama.
         // Skip when setNodes reloads the current node (newId === prevId) to avoid
