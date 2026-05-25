@@ -112,7 +112,7 @@ export default async function PublicViewerPage({
   const { data: rawHotspots } = pList.length
     ? await supabase
         .from("hotspots")
-        .select("id, panorama_id, type, yaw, pitch, title, description, target_panorama_id")
+        .select("id, panorama_id, type, yaw, pitch, title, description, target_panorama_id, metadata")
         .in("panorama_id", pList.map((p) => p.id))
     : { data: [] };
 
@@ -133,12 +133,13 @@ export default async function PublicViewerPage({
       .filter((h) => h.panorama_id === p.id)
       .map((h) => ({
         id: h.id,
-        type: h.type as "link" | "info",
+        type: h.type as "link" | "info" | "pin" | "text" | "area" | "floor",
         yaw: h.yaw,
         pitch: h.pitch,
         title: h.title,
         description: h.description,
         targetPanoramaId: h.target_panorama_id,
+        metadata: (h.metadata as Record<string, unknown> | null) ?? undefined,
       })),
   }));
 

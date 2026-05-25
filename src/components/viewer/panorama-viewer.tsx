@@ -458,10 +458,11 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
         >
           <div className="px-3 py-3">
             <div
-              className="flex gap-2 overflow-x-auto pointer-events-auto justify-center py-2"
+              className="overflow-x-auto pointer-events-auto py-2"
               style={{ scrollbarWidth: "none" } as React.CSSProperties}
               onPointerDown={(e) => e.stopPropagation()}
             >
+              <div className="flex gap-2 w-max mx-auto px-1">
               {navPanoramas.map((p) => {
                 const isActive = p.id === activeId;
                 const isOverview = p.id === overviewPanoramaId;
@@ -506,6 +507,7 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
                   </button>
                 );
               })}
+              </div>
             </div>
           </div>
         </div>

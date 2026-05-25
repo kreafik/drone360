@@ -140,7 +140,7 @@ async function HotspotsTabContent({ projectId }: { projectId: string }) {
       .filter((h) => h.panorama_id === p.id)
       .map((h) => ({
         id: h.id,
-        type: h.type as "link" | "info" | "pin" | "text",
+        type: h.type as "link" | "info" | "pin" | "text" | "area" | "floor",
         yaw: h.yaw,
         pitch: h.pitch,
         title: h.title,

@@ -1,6 +1,7 @@
 "use client";
 
-import { Menu } from "lucide-react";
+import { Menu, Settings, LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -31,10 +32,12 @@ function getInitials(name: string | null, email: string) {
 }
 
 export function Topbar({ email, fullName, onMenuClick }: TopbarProps) {
+  const router = useRouter();
+
   async function handleLogout() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    window.location.href = "/login";
+    router.push("/login");
   }
 
   const initials = getInitials(fullName, email);
@@ -75,9 +78,18 @@ export function Topbar({ email, fullName, onMenuClick }: TopbarProps) {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={handleLogout}
-            className="text-danger focus:text-danger focus:bg-danger/10 cursor-pointer"
+            onClick={() => router.push("/dashboard/settings")}
+            className="cursor-pointer gap-2"
           >
+            <Settings className="size-3.5 text-muted-foreground" />
+            Ayarlar
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={handleLogout}
+            className="text-danger focus:text-danger focus:bg-danger/10 cursor-pointer gap-2"
+          >
+            <LogOut className="size-3.5" />
             Çıkış Yap
           </DropdownMenuItem>
         </DropdownMenuContent>
