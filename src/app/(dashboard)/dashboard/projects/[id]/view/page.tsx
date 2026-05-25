@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getProfile } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
-import { resolveUrls } from "@/lib/r2/urls";
+import { resolveProxyUrls, resolveUrls } from "@/lib/r2/urls";
 import { PanoramaViewerClient } from "@/components/viewer/panorama-viewer-no-ssr";
 import type { ViewerPanorama } from "@/components/viewer/panorama-viewer";
 
@@ -56,7 +56,7 @@ export default async function ProjectViewPage({
           .select("id, panorama_id, type, yaw, pitch, title, description, target_panorama_id, metadata")
           .in("panorama_id", pList.map((p) => p.id))
       : Promise.resolve({ data: [] }),
-    resolveUrls(pList.map((p) => p.storage_key)),
+    resolveProxyUrls(pList.map((p) => p.storage_key)),
     resolveUrls(pList.map((p) => p.thumbnail_key)),
   ]);
 

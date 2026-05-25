@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveUrls } from "@/lib/r2/urls";
+import { resolveProxyUrls, resolveUrls } from "@/lib/r2/urls";
 import { AnalyticsViewer } from "@/components/viewer/analytics-viewer";
 import { BrandOverlay } from "@/components/viewer/brand-overlay";
 import type { ViewerPanorama } from "@/components/viewer/panorama-viewer";
@@ -115,7 +115,8 @@ export default async function PublicViewerPage({
     : { data: [] };
 
   const hotspots = rawHotspots ?? [];
-  const storageUrls = await resolveUrls(pList.map((p) => p.storage_key));
+  // Full panoramas through auth-gated proxy; thumbnails via presigned (needed for next/image)
+  const storageUrls = await resolveProxyUrls(pList.map((p) => p.storage_key), token);
   const thumbnailUrls = await resolveUrls(pList.map((p) => p.thumbnail_key));
 
   // Use server-side Supabase client (with RLS) for URL resolution — admin client already resolved above

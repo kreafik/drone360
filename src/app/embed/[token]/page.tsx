@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveUrls } from "@/lib/r2/urls";
+import { resolveProxyUrls, resolveUrls } from "@/lib/r2/urls";
 import { PanoramaViewerClient } from "@/components/viewer/panorama-viewer-no-ssr";
 import type { ViewerPanorama } from "@/components/viewer/panorama-viewer";
 
@@ -57,7 +57,7 @@ export default async function EmbedPage({
     : { data: [] };
 
   const hotspots = rawHotspots ?? [];
-  const storageUrls = await resolveUrls(pList.map((p) => p.storage_key));
+  const storageUrls = await resolveProxyUrls(pList.map((p) => p.storage_key), token);
   const thumbnailUrls = await resolveUrls(pList.map((p) => p.thumbnail_key));
 
   const panoramas: ViewerPanorama[] = pList.map((p, i) => ({

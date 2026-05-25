@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ImageIcon, Network, BarChart2, Share2, Eye, Users } from "lucide-react";
 import { getProfile } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
-import { resolveUrls } from "@/lib/r2/urls";
+import { resolveProxyUrls, resolveUrls } from "@/lib/r2/urls";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -122,7 +122,7 @@ async function HotspotsTabContent({ projectId }: { projectId: string }) {
           .select("id, panorama_id, type, yaw, pitch, title, description, target_panorama_id, metadata")
           .in("panorama_id", readyPanoramas.map((p) => p.id))
       : Promise.resolve({ data: [] }),
-    resolveUrls(readyPanoramas.map((p) => p.storage_key)),
+    resolveProxyUrls(readyPanoramas.map((p) => p.storage_key)),
     resolveUrls(readyPanoramas.map((p) => p.thumbnail_key)),
   ]);
 
