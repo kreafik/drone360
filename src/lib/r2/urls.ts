@@ -1,15 +1,17 @@
 import "server-only";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { r2, R2_BUCKET, R2_PUBLIC_URL } from "./client";
+import { r2, R2_BUCKET } from "./client";
 
 export async function resolveUrl(key: string | null | undefined): Promise<string | null> {
   if (!key) return null;
-  if (R2_PUBLIC_URL) return `${R2_PUBLIC_URL.replace(/\/$/, "")}/${key}`;
+  // Always use presigned URLs — public R2 URLs are permanent and leak the storage key.
+  // 2-hour expiry: long enough for any session (preloading caches images upfront),
+  // short enough that a copied URL is useless after the session ends.
   return getSignedUrl(
     r2,
     new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }),
-    { expiresIn: 43200 } // 12 hours
+    { expiresIn: 7200 }
   );
 }
 
