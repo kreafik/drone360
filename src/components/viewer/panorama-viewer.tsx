@@ -131,9 +131,9 @@ function buildDirectionMarkerHtml(h: ViewerHotspot): string {
   const name = (h.title ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const distance = (meta.distance ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   return `<div class="d360-direction-marker">
-    <span class="d360-direction-marker__arrow">&#8593;</span>
     ${name ? `<span class="d360-direction-marker__name">${name}</span>` : ""}
     ${distance ? `<span class="d360-direction-marker__distance">${distance}</span>` : ""}
+    <span class="d360-direction-marker__arrow">&#8595;</span>
   </div>`;
 }
 
