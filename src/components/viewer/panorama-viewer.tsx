@@ -262,6 +262,13 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
     const timerId = setTimeout(() => {
       if (!container.isConnected) return;
 
+      // PSV warns when a node has no incoming links. In our architecture all
+      // panoramas are reachable via thumbnail nav, so unlinked nodes are fine.
+      const origWarn = console.warn;
+      console.warn = (...args: Parameters<typeof console.warn>) => {
+        if (typeof args[0] === "string" && args[0].includes("is never linked to")) return;
+        origWarn.apply(console, args);
+      };
       viewer = new Viewer({
         container,
         // panorama is intentionally omitted — VirtualTourPlugin loads it via startNodeId.
@@ -295,6 +302,7 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
           ...(autorotate ? [[AutorotatePlugin, { autostartDelay: 2000, autostartOnIdle: false }] as never] : []),
         ],
       });
+      console.warn = origWarn;
 
       viewerRef.current = viewer;
       const vt = viewer.getPlugin(VirtualTourPlugin) as VirtualTourPlugin;
@@ -532,7 +540,7 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
               onPointerDown={(e) => e.stopPropagation()}
             >
               <div className="flex gap-2 w-max mx-auto px-1">
-              {navPanoramas.map((p) => {
+              {navPanoramas.map((p, i) => {
                 const isActive = p.id === activeId;
                 const isOverview = p.id === overviewPanoramaId;
                 return (
@@ -556,6 +564,7 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
                           fill
                           className="object-cover"
                           unoptimized
+                          priority={i === 0}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
