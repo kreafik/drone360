@@ -1,9 +1,11 @@
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { requireAdmin, requireAuth } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { projectSchema } from "@/lib/validation/project";
+import { r2, R2_BUCKET } from "@/lib/r2/client";
 
 const updateSchema = projectSchema.partial().extend({
   status: z.enum(["draft", "published", "archived"]).optional(),
@@ -85,16 +87,43 @@ export async function DELETE(
 
   const { id } = await params;
   const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("projects")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", id)
+  const now = new Date().toISOString();
+
+  // Fetch all panorama R2 keys before soft-deleting
+  const { data: panoramas } = await supabase
+    .from("panoramas")
+    .select("storage_key, thumbnail_key")
+    .eq("project_id", id)
     .is("deleted_at", null);
 
-  if (error) {
+  // Soft-delete the project and all its panoramas atomically
+  const [projectRes] = await Promise.all([
+    supabase
+      .from("projects")
+      .update({ deleted_at: now })
+      .eq("id", id)
+      .is("deleted_at", null),
+    supabase
+      .from("panoramas")
+      .update({ deleted_at: now })
+      .eq("project_id", id)
+      .is("deleted_at", null),
+  ]);
+
+  if (projectRes.error) {
     return NextResponse.json(
-      { error: { message: error.message } },
+      { error: { message: projectRes.error.message } },
       { status: 500 }
+    );
+  }
+
+  // Delete R2 objects (fire-and-forget)
+  if (panoramas?.length) {
+    const keys = panoramas
+      .flatMap((p) => [p.storage_key, p.thumbnail_key])
+      .filter(Boolean) as string[];
+    await Promise.allSettled(
+      keys.map((key) => r2.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: key })))
     );
   }
 

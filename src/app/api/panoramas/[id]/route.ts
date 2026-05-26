@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { requireAdmin } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { r2, R2_BUCKET } from "@/lib/r2/client";
 
 const patchSchema = z.object({
   title: z.string().min(1).max(100).optional(),
@@ -70,6 +72,15 @@ export async function DELETE(
 
   const { id } = await params;
   const supabase = await createClient();
+
+  // Fetch keys before soft-deleting so we can clean up R2
+  const { data: pano } = await supabase
+    .from("panoramas")
+    .select("storage_key, thumbnail_key")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .single();
+
   const { error } = await supabase
     .from("panoramas")
     .update({ deleted_at: new Date().toISOString() })
@@ -78,6 +89,14 @@ export async function DELETE(
 
   if (error) {
     return NextResponse.json({ error: { message: error.message } }, { status: 500 });
+  }
+
+  // Delete R2 objects (fire-and-forget; don't fail the response if R2 errors)
+  if (pano) {
+    const keys = [pano.storage_key, pano.thumbnail_key].filter(Boolean) as string[];
+    await Promise.allSettled(
+      keys.map((key) => r2.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: key })))
+    );
   }
 
   return NextResponse.json({ success: true });
