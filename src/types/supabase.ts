@@ -540,7 +540,7 @@ export type Database = {
         | "hotspot_click"
         | "fullscreen_enter"
         | "vr_enter"
-      hotspot_type: "link" | "info" | "pin" | "text" | "area" | "floor"
+      hotspot_type: "link" | "info" | "pin" | "text" | "area" | "floor" | "direction"
       panorama_status: "uploading" | "processing" | "ready" | "failed"
       project_status: "draft" | "published" | "archived"
       project_type: "real_estate" | "boat" | "other"

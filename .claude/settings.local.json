@@ -22,7 +22,23 @@
       "Bash(Get-ChildItem -Recurse -Path \"src/app/\\(dashboard\\)/dashboard/projects\")",
       "Bash(Select-Object Name, FullName)",
       "Bash(ls src/app/api/)",
-      "Bash(dir src\\\\app\\\\api /b)"
+      "Bash(dir src\\\\app\\\\api /b)",
+      "Bash(npx supabase *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\CJ\\\\Desktop\\\\www\\\\drone360\\\\src\\\\app\" -Recurse | Where-Object {$_.Name -eq \"page.tsx\"} | Select-Object FullName)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\CJ\\\\Desktop\\\\www\\\\drone360\" -Recurse -Depth 2 -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object -First 50)",
+      "mcp__plugin_supabase_supabase__list_projects",
+      "mcp__plugin_supabase_supabase__list_migrations",
+      "mcp__plugin_supabase_supabase__apply_migration",
+      "Bash(grep *)",
+      "mcp__plugin_supabase_supabase__get_logs",
+      "Bash(npx shadcn@latest add alert-dialog --yes)",
+      "mcp__plugin_supabase_supabase__execute_sql",
+      "Bash(git commit *)",
+      "Bash(npm i *)"
     ]
   }
 }

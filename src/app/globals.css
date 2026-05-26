@@ -553,6 +553,59 @@
   }
 }
 
+/* Direction / distance hotspot marker */
+.d360-direction-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px 10px;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  min-width: 68px;
+  text-align: center;
+}
+
+.d360-direction-marker:hover {
+  transform: scale(1.07) translateY(-4px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.65);
+  border-color: rgba(255, 255, 255, 0.38);
+}
+
+.d360-direction-marker__arrow {
+  font-size: 17px;
+  line-height: 1;
+  color: #fff;
+  animation: d360-direction-bob 2.6s ease-in-out infinite;
+  display: block;
+}
+
+.d360-direction-marker__name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.d360-direction-marker__distance {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+@keyframes d360-direction-bob {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-4px); }
+}
+
 /* Panorama transition top bar */
 @keyframes d360-topbar {
   0%   { transform: translateX(-150%); }

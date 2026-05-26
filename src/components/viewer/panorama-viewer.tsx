@@ -14,11 +14,11 @@ import { GyroscopePlugin } from "@photo-sphere-viewer/gyroscope-plugin";
 import { AutorotatePlugin } from "@photo-sphere-viewer/autorotate-plugin";
 import { Cache as ThreeCache } from "three";
 import { cn } from "@/lib/utils";
-import type { TextHotspotMetadata, AreaHotspotMetadata } from "@/types/domain";
+import type { TextHotspotMetadata, AreaHotspotMetadata, DirectionHotspotMetadata } from "@/types/domain";
 
 export interface ViewerHotspot {
   id: string;
-  type: "link" | "info" | "pin" | "text" | "area" | "floor";
+  type: "link" | "info" | "pin" | "text" | "area" | "floor" | "direction";
   yaw: number;
   pitch: number;
   title?: string | null;
@@ -126,6 +126,17 @@ function buildFloorMarkerHtml(h: ViewerHotspot): string {
   </div>`;
 }
 
+function buildDirectionMarkerHtml(h: ViewerHotspot): string {
+  const meta = (h.metadata ?? {}) as Partial<DirectionHotspotMetadata>;
+  const name = (h.title ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const distance = (meta.distance ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `<div class="d360-direction-marker">
+    <span class="d360-direction-marker__arrow">&#8593;</span>
+    ${name ? `<span class="d360-direction-marker__name">${name}</span>` : ""}
+    ${distance ? `<span class="d360-direction-marker__distance">${distance}</span>` : ""}
+  </div>`;
+}
+
 function buildNodes(panoramas: ViewerPanorama[]) {
   return panoramas.map((p) => ({
     id: p.id,
@@ -140,7 +151,7 @@ function buildNodes(panoramas: ViewerPanorama[]) {
         name: h.title ?? undefined,
       })),
     markers: p.hotspots
-      .filter((h) => h.type === "info" || h.type === "pin" || h.type === "text" || h.type === "area" || h.type === "floor")
+      .filter((h) => h.type === "info" || h.type === "pin" || h.type === "text" || h.type === "area" || h.type === "floor" || h.type === "direction")
       .map((h) => {
         if (h.type === "pin") {
           const label = (h.title ?? "Geçiş").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -189,6 +200,15 @@ function buildNodes(panoramas: ViewerPanorama[]) {
             position: { yaw: h.yaw, pitch: h.pitch },
             html: buildFloorMarkerHtml(h),
             anchor: "center center" as const,
+            data: h,
+          };
+        }
+        if (h.type === "direction") {
+          return {
+            id: h.id,
+            position: { yaw: h.yaw, pitch: h.pitch },
+            html: buildDirectionMarkerHtml(h),
+            anchor: "bottom center" as const,
             data: h,
           };
         }
@@ -405,6 +425,8 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
               title: label ? `${statusLabel} — ${label}` : statusLabel,
               description: (meta.description as string | null | undefined) ?? null,
             });
+          } else if (hotspot.type === "direction") {
+            viewer?.animate({ yaw: hotspot.yaw, pitch: hotspot.pitch, speed: "2rpm" });
           } else if (hotspot.type === "floor" && hotspot.targetPanoramaId) {
             const targetId = hotspot.targetPanoramaId;
             // Animate camera to look toward the floor hotspot, then transition to target panorama

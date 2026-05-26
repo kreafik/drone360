@@ -30,7 +30,7 @@ export interface Panorama {
 export interface Hotspot {
   id: string;
   panoramaId: string;
-  type: "link" | "info" | "pin" | "text" | "area" | "floor";
+  type: "link" | "info" | "pin" | "text" | "area" | "floor" | "direction";
   yaw: number;
   pitch: number;
   targetPanoramaId: string | null;
@@ -48,6 +48,10 @@ export interface AreaHotspotMetadata {
   description?: string;
   size: "sm" | "md" | "lg" | "xl";
   animation: "none" | "pulse";
+}
+
+export interface DirectionHotspotMetadata {
+  distance?: string;
 }
 
 export interface TextHotspotMetadata {

@@ -6,7 +6,7 @@ import type { Json } from "@/types/supabase";
 
 const createSchema = z.object({
   panoramaId: z.string().uuid(),
-  type: z.enum(["link", "info", "pin", "text", "area", "floor"]),
+  type: z.enum(["link", "info", "pin", "text", "area", "floor", "direction"]),
   yaw: z.number(),
   pitch: z.number(),
   title: z.string().min(1).max(100).optional(),

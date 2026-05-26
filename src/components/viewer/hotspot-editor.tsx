@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useState, useCallback, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Save, ImageIcon, Info, ArrowRight, MapPin, Plus, Type, Square, CircleDot } from "lucide-react";
+import { Trash2, Save, ImageIcon, Info, ArrowRight, MapPin, Plus, Type, Square, CircleDot, Navigation } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { HotspotForm } from "./hotspot-form";
@@ -191,6 +191,8 @@ export function HotspotEditor({ panoramas }: HotspotEditorProps) {
                   <Square className="size-3.5 text-emerald-400" />
                 ) : h.type === "floor" ? (
                   <CircleDot className="size-3.5 text-sky-400" />
+                ) : h.type === "direction" ? (
+                  <Navigation className="size-3.5 text-teal-400" />
                 ) : (
                   <ArrowRight className="size-3.5" />
                 )}
@@ -206,7 +208,7 @@ export function HotspotEditor({ panoramas }: HotspotEditorProps) {
                       const lbl = m.label as string | undefined;
                       return lbl ? `${status} — ${lbl}` : status;
                     })()
-                  : (h.title ?? (h.type === "link" ? "Geçiş" : h.type === "pin" ? "Sabit Pin" : h.type === "floor" ? "Zemin Geçiş" : "Bilgi"))}
+                  : (h.title ?? (h.type === "link" ? "Geçiş" : h.type === "pin" ? "Sabit Pin" : h.type === "floor" ? "Zemin Geçiş" : h.type === "direction" ? "Yön" : "Bilgi"))}
               </span>
               <button
                 type="button"

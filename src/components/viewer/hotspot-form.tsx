@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { ViewerPanorama, ViewerHotspot } from "./panorama-viewer";
-import type { TextHotspotMetadata, AreaHotspotMetadata } from "@/types/domain";
+import type { TextHotspotMetadata, AreaHotspotMetadata, DirectionHotspotMetadata } from "@/types/domain";
 
 const selectCls =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring";
@@ -37,7 +37,7 @@ export function HotspotForm({
   position,
   editing,
 }: HotspotFormProps) {
-  const [type, setType] = useState<"link" | "info" | "pin" | "text" | "area" | "floor">(
+  const [type, setType] = useState<"link" | "info" | "pin" | "text" | "area" | "floor" | "direction">(
     editing?.type ?? "info"
   );
   const [title, setTitle] = useState(editing?.title ?? "");
@@ -85,6 +85,12 @@ export function HotspotForm({
   const [areaAnimation, setAreaAnimation] = useState<AreaHotspotMetadata["animation"]>(
     editingAreaMeta.animation ?? "pulse"
   );
+
+  const editingDirMeta =
+    editing?.type === "direction"
+      ? ((editing.metadata ?? {}) as Partial<DirectionHotspotMetadata>)
+      : {};
+  const [dirDistance, setDirDistance] = useState(editingDirMeta.distance ?? "");
 
   const [saving, setSaving] = useState(false);
   const isEditing = !!editing;
@@ -176,6 +182,39 @@ export function HotspotForm({
         return;
       }
 
+      if (type === "direction") {
+        const metadata: DirectionHotspotMetadata = {
+          distance: dirDistance || undefined,
+        };
+        const res = isEditing
+          ? await fetch(`/api/hotspots/${editing.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ title: title || undefined, metadata }),
+            })
+          : await fetch("/api/hotspots", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                panoramaId,
+                type: "direction",
+                yaw: position!.yaw,
+                pitch: position!.pitch,
+                title: title || undefined,
+                metadata,
+              }),
+            });
+        if (!res.ok) {
+          const { error } = await res.json();
+          toast.error(error?.message ?? "Hotspot kaydedilemedi.");
+          return;
+        }
+        toast.success(isEditing ? "Hotspot güncellendi." : "Hotspot eklendi.");
+        onSaved();
+        onClose();
+        return;
+      }
+
       let res: Response;
       if (isEditing) {
         res = await fetch(`/api/hotspots/${editing.id}`, {
@@ -239,12 +278,13 @@ export function HotspotForm({
             <div className="grid grid-cols-3 gap-1">
               {(
                 [
-                  { value: "info",  label: "ℹ Bilgi" },
-                  { value: "link",  label: "↗ Geçiş" },
-                  { value: "floor", label: "⬇ Zemin" },
-                  { value: "pin",   label: "📍 Pin" },
-                  { value: "text",  label: "T Yazı" },
-                  { value: "area",  label: "⬜ Alan" },
+                  { value: "info",      label: "ℹ Bilgi" },
+                  { value: "link",      label: "↗ Geçiş" },
+                  { value: "floor",     label: "⬇ Zemin" },
+                  { value: "pin",       label: "📍 Pin" },
+                  { value: "text",      label: "T Yazı" },
+                  { value: "area",      label: "⬜ Alan" },
+                  { value: "direction", label: "↑ Yön" },
                 ] as const
               ).map(({ value, label }) => (
                 <button
@@ -284,11 +324,11 @@ export function HotspotForm({
             </div>
           )}
 
-          {/* Info / Link / Pin / Floor: title */}
+          {/* Info / Link / Pin / Floor / Direction: title */}
           {type !== "text" && type !== "area" && (
             <div className="space-y-1.5">
               <Label>
-                {type === "info" ? "Başlık" : "Etiket (opsiyonel)"}
+                {type === "info" ? "Başlık" : type === "direction" ? "Yer / Yön Adı" : "Etiket (opsiyonel)"}
               </Label>
               <Input
                 value={title}
@@ -298,9 +338,24 @@ export function HotspotForm({
                     ? "Hotspot başlığı…"
                     : type === "floor"
                     ? "Zemin etiketi (opsiyonel)…"
+                    : type === "direction"
+                    ? "Örn: Deniz, Havalimanı, Şehir Merkezi…"
                     : "Pin etiketi…"
                 }
                 maxLength={100}
+              />
+            </div>
+          )}
+
+          {/* Direction: distance */}
+          {type === "direction" && (
+            <div className="space-y-1.5">
+              <Label>Uzaklık (opsiyonel)</Label>
+              <Input
+                value={dirDistance}
+                onChange={(e) => setDirDistance(e.target.value)}
+                placeholder="Örn: 200m, 1.2 km, 5 dakika…"
+                maxLength={30}
               />
             </div>
           )}
