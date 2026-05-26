@@ -326,11 +326,10 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
         setIsTransitioning(false);
         callbacksRef.current.onPanoramaChange?.(newId);
 
-        // After the first panorama loads, silently preload remaining panoramas
-        // one by one using fetch() — same infrastructure as Three.js FileLoader,
-        // so the HTTP cache entry is shared and PSV finds the image instantly.
-        // The AbortController lets setCurrentNode cancel an in-flight preload
-        // so its large download doesn't compete with PSV's own navigation fetch.
+        // After the first panorama loads, preload all remaining panoramas in parallel.
+        // Parallel (not sequential) is faster: total time ≈ slowest single download
+        // instead of N × download time. Images land in the browser's HTTP cache so
+        // PSV finds them instantly on navigation — no second network request.
         if (!preloadStartedRef.current && panoramasRef.current.length > 1) {
           preloadStartedRef.current = true;
           const otherUrls = panoramasRef.current
@@ -338,15 +337,13 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
             .map((p) => p.panoramaUrl);
           const controller = new AbortController();
           preloadAbortRef.current = controller;
-          (async () => {
-            for (const url of otherUrls) {
-              if (controller.signal.aborted) break;
-              await fetch(url, { mode: "cors", signal: controller.signal })
+          Promise.all(
+            otherUrls.map((url) =>
+              fetch(url, { signal: controller.signal })
                 .then((r) => r.blob())
-                .catch(() => {});
-            }
-            preloadAbortRef.current = null;
-          })();
+                .catch(() => {})
+            )
+          ).then(() => { preloadAbortRef.current = null; });
         }
 
         // Apply saved default camera view when navigating to a different panorama.
