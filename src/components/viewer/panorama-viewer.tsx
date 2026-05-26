@@ -12,6 +12,7 @@ import { MarkersPlugin } from "@photo-sphere-viewer/markers-plugin";
 import { VirtualTourPlugin } from "@photo-sphere-viewer/virtual-tour-plugin";
 import { GyroscopePlugin } from "@photo-sphere-viewer/gyroscope-plugin";
 import { AutorotatePlugin } from "@photo-sphere-viewer/autorotate-plugin";
+import { Cache as ThreeCache } from "three";
 import { cn } from "@/lib/utils";
 import type { TextHotspotMetadata, AreaHotspotMetadata } from "@/types/domain";
 
@@ -326,23 +327,26 @@ export const PanoramaViewer = forwardRef<PanoramaViewerHandle, PanoramaViewerPro
         setIsTransitioning(false);
         callbacksRef.current.onPanoramaChange?.(newId);
 
-        // After the first panorama loads, preload all remaining panoramas in parallel.
-        // Parallel (not sequential) is faster: total time ≈ slowest single download
-        // instead of N × download time. Images land in the browser's HTTP cache so
-        // PSV finds them instantly on navigation — no second network request.
+        // After the first panorama loads, preload all remaining panoramas in parallel
+        // and store each blob directly into THREE.Cache — the same in-memory cache
+        // that PSV's FileLoader checks before making any network request.
+        // This guarantees zero network round-trips on navigation regardless of
+        // browser HTTP cache behaviour.
         if (!preloadStartedRef.current && panoramasRef.current.length > 1) {
           preloadStartedRef.current = true;
+          ThreeCache.enabled = true;
           const otherUrls = panoramasRef.current
             .filter((p) => p.id !== newId)
             .map((p) => p.panoramaUrl);
           const controller = new AbortController();
           preloadAbortRef.current = controller;
           Promise.all(
-            otherUrls.map((url) =>
-              fetch(url, { signal: controller.signal })
-                .then((r) => r.blob())
-                .catch(() => {})
-            )
+            otherUrls.map(async (url) => {
+              const res = await fetch(url, { signal: controller.signal }).catch(() => null);
+              if (!res) return;
+              const blob = await res.blob().catch(() => null);
+              if (blob) ThreeCache.add(url, blob);
+            })
           ).then(() => { preloadAbortRef.current = null; });
         }
 
